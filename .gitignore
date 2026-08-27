@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+
+# arquivos que não devem voltar pro repo
+*.tar.gz
+*.zip
+.DS_Store

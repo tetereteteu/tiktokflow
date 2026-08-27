@@ -23,7 +23,7 @@ Tenha em mãos:
 2. Region: escolha São Paulo (`sa-east-1`) pra menor latência no Brasil.
 3. Plataforma **Linux/Unix** → blueprint **Node.js**.
 4. Plano: o de **US$ 10/mês** (2 GB RAM) — o de 512 MB às vezes engasga no build do Next.
-5. Nomeie (ex: `nerva-shop`) e crie.
+5. Nomeie (ex: `tiktokflow`) e crie.
 6. Aba **Networking** da instância → **Create static IP** → anexe à instância. Anote esse IP.
 7. Aba **Networking** → **Firewall** → adicione as regras: **HTTP (80)** e **HTTPS (443)**.
 
@@ -63,31 +63,24 @@ node -v
 
 ## FASE 4 — Subir o código [TERMINAL]
 
-**Opção A — via GitHub (recomendado):** suba a pasta `nerva-shop` pra um repositório privado no seu GitHub, depois:
+O código-fonte fica versionado no repositório. Na VPS:
+
 ```bash
 cd ~
-git clone https://SEU_TOKEN@github.com/SEU_USUARIO/nerva-shop.git
-cd nerva-shop
+git clone https://github.com/tetereteteu/tiktokflow.git
+cd tiktokflow
 ```
 
-**Opção B — enviar o .tar.gz direto:** no SEU computador (não no servidor), rode:
-```bash
-# troque IP_DA_VPS e o caminho da chave .pem que a AWS te deu
-scp -i ~/Downloads/LightsailDefaultKey.pem nerva-shop.tar.gz ubuntu@IP_DA_VPS:~/
-```
-Depois, no **[TERMINAL]** da VPS:
-```bash
-cd ~
-tar -xzf nerva-shop.tar.gz
-cd nerva-shop
-```
+> Se o repositório for **privado**, gere um Personal Access Token no GitHub
+> (Settings → Developer settings → Tokens) e use:
+> `git clone https://SEU_TOKEN@github.com/tetereteteu/tiktokflow.git`
 
 ---
 
 ## FASE 5 — Configurar e instalar [TERMINAL]
 
 ```bash
-cd ~/nerva-shop
+cd ~/tiktokflow
 
 # instalar dependências
 npm install
@@ -122,7 +115,7 @@ npm run build
 
 ```bash
 sudo npm install -g pm2
-pm2 start "npm run start" --name nerva-shop
+pm2 start "npm run start" --name tiktokflow
 pm2 save
 pm2 startup
 ```
@@ -181,17 +174,17 @@ Sua loja fica em `https://seudominio.com/{slug}` e o checkout em `https://seudom
 
 Quando eu te mandar código novo:
 ```bash
-cd ~/nerva-shop
-git pull            # (ou reenvie o tar e extraia por cima)
+cd ~/tiktokflow
+git pull
 npm install
 npm run build
-pm2 restart nerva-shop
+pm2 restart tiktokflow
 ```
 
 ## Comandos úteis [TERMINAL]
 ```bash
-pm2 logs nerva-shop      # ver logs em tempo real (erros aparecem aqui)
-pm2 restart nerva-shop   # reiniciar
+pm2 logs tiktokflow      # ver logs em tempo real (erros aparecem aqui)
+pm2 restart tiktokflow   # reiniciar
 pm2 status               # ver se está no ar
 npm run db:studio        # abrir o Prisma Studio pra ver o banco (porta 5555)
 ```

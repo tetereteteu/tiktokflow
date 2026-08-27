@@ -1,0 +1,187 @@
+// ─────────────────────────────────────────────────────────────
+// TikTokFlow — schema do banco (Postgres via Prisma)
+// Multi-loja: cada Store tem sua própria API Key da Nerva,
+// seus produtos e seus pedidos.
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Usuário do painel admin (você e, no futuro, donos de loja)
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String // hash bcrypt — nunca senha em texto puro
+  name      String?
+  role      Role     @default(OWNER)
+  stores    Store[] // lojas que este usuário administra
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN // você — vê tudo
+  OWNER // dono de uma ou mais lojas
+}
+
+// Loja / vitrine
+model Store {
+  id          String  @id @default(uuid())
+  name        String
+  slug        String  @unique // vitrine acessível em /{slug}
+  description String?
+  domain      String? @unique // domínio próprio, opcional
+  active      Boolean @default(true)
+
+  // Credenciais Nerva — UMA POR LOJA (conforme decidido)
+  // A API key fica só no servidor. Nunca exposta ao frontend.
+  nervaApiKey        String? // sk_live_...
+  nervaWebhookSecret String? // secret pra validar o HMAC do webhook
+
+  // Pixels de anúncio (para tráfego pago desde o início)
+  metaPixelId   String? // ID do Pixel do Facebook/Meta
+  tiktokPixelId String? // ID do Pixel do TikTok
+  googleAdsId   String? // ex: AW-XXXXXXXXX (opcional)
+
+  owner    User        @relation(fields: [ownerId], references: [id])
+  ownerId  String
+  products Product[]
+  orders   Order[]
+  bumps    OrderBump[]
+  upsells  Upsell[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+// Produto de uma loja
+model Product {
+  id             String   @id @default(uuid())
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId        String
+  title          String
+  slug           String // checkout em /{store}/checkout/{slug}
+  description    String?
+  // valores em CENTAVOS pra evitar erro de ponto flutuante em dinheiro
+  priceCents     Int
+  compareAtCents Int? // preço "de" (riscado)
+  imageUrl       String?
+  active         Boolean  @default(true)
+  orders         Order[]
+  upsells        Upsell[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+}
+
+// Pedido / cobrança
+model Order {
+  id      String @id @default(uuid())
+  store   Store  @relation(fields: [storeId], references: [id])
+  storeId String
+
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+
+  // Dados do comprador
+  customerName     String?
+  customerEmail    String?
+  customerDocument String // CPF — obrigatório pela Nerva
+
+  amountCents Int // valor cobrado, em centavos (produto + bump, se houver)
+  feeCents    Int? // taxa Nerva (preenchida quando a Nerva responde)
+  netCents    Int? // líquido
+
+  // Order bump aceito neste pedido (opcional)
+  bump   OrderBump? @relation(fields: [bumpId], references: [id])
+  bumpId String?
+
+  // Marca se este pedido é fruto de um upsell pós-compra
+  isUpsell Boolean @default(false)
+
+  status OrderStatus @default(PENDING)
+
+  // Dados de rastreamento de marketing (pra atribuição de anúncio)
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  fbclid      String?
+  ttclid      String?
+  gclid       String?
+  fbp         String?
+  fbc         String?
+  clientIp    String?
+  clientUa    String? @db.Text
+
+  // Vínculo com a Nerva
+  nervaSaleId  String? @unique // id UUID que a Nerva devolve
+  nervaTxId    String? // transactionId (adquirente)
+  pixCode      String? @db.Text // copia-e-cola
+  pixQrCodeUrl String? @db.Text // url do QR
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([storeId])
+  @@index([status])
+  @@index([nervaSaleId])
+}
+
+enum OrderStatus {
+  PENDING // aguardando pagamento
+  PAID // pago (confirmado via webhook)
+  FAILED // falhou
+  EXPIRED // expirou sem pagamento
+  REFUNDED // estornado
+}
+
+// Order bump: oferta extra exibida DENTRO do checkout (um clique adiciona ao valor)
+model OrderBump {
+  id          String   @id @default(uuid())
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId     String
+  title       String // ex: "Leve também o brinde X"
+  description String?
+  priceCents  Int // valor adicional
+  imageUrl    String?
+  active      Boolean  @default(true)
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeId])
+}
+
+// Upsell: oferta exibida DEPOIS do pagamento aprovado (gera novo pedido/Pix)
+model Upsell {
+  id             String   @id @default(uuid())
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId        String
+  title          String
+  description    String?
+  priceCents     Int
+  compareAtCents Int?
+  imageUrl       String?
+  // produto que o upsell entrega (reusa o catálogo)
+  product        Product  @relation(fields: [productId], references: [id])
+  productId      String
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([storeId])
+}
