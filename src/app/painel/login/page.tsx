@@ -49,7 +49,7 @@ export default function LoginPage() {
             className="display"
             style={{ fontSize: 52, marginTop: 6, color: "var(--gold)" }}
           >
-            NERVA SHOP
+            TIKTOKFLOW
           </h1>
         </div>
 

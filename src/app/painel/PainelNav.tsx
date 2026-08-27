@@ -23,7 +23,7 @@ export default function PainelNav({ email }: { email: string }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
         <Link href="/painel" className="display" style={{ fontSize: 30, color: "var(--gold)" }}>
-          NERVA SHOP
+          TIKTOKFLOW
         </Link>
         <nav style={{ display: "flex", gap: 6 }}>
           {items.map((it) => (
