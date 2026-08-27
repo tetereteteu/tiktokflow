@@ -28,6 +28,11 @@ export default async function LojasPage() {
     googleAdsId: s.googleAdsId,
     hasNervaKey: !!s.nervaApiKey,
     hasWebhookSecret: !!s.nervaWebhookSecret,
+    capiOwn: s.capiOwn,
+    metaTestEventCode: s.metaTestEventCode,
+    tiktokTestEventCode: s.tiktokTestEventCode,
+    hasMetaToken: !!s.metaAccessToken,
+    hasTiktokToken: !!s.tiktokAccessToken,
     products: s._count.products,
     orders: s._count.orders,
   }));

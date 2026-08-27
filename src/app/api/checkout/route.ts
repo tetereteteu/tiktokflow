@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
       isUpsell: !!isUpsell,
       customerName: name || null,
       customerEmail: email || null,
+      customerPhone: phone || null,
       customerDocument: document.replace(/\D/g, ""),
       amountCents,
       status: "PENDING",

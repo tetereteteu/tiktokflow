@@ -40,6 +40,11 @@ export async function PATCH(
       ...(b.metaPixelId !== undefined ? { metaPixelId: b.metaPixelId || null } : {}),
       ...(b.tiktokPixelId !== undefined ? { tiktokPixelId: b.tiktokPixelId || null } : {}),
       ...(b.googleAdsId !== undefined ? { googleAdsId: b.googleAdsId || null } : {}),
+      ...(b.capiOwn !== undefined ? { capiOwn: !!b.capiOwn } : {}),
+      ...(b.metaAccessToken !== undefined ? { metaAccessToken: b.metaAccessToken || null } : {}),
+      ...(b.metaTestEventCode !== undefined ? { metaTestEventCode: b.metaTestEventCode || null } : {}),
+      ...(b.tiktokAccessToken !== undefined ? { tiktokAccessToken: b.tiktokAccessToken || null } : {}),
+      ...(b.tiktokTestEventCode !== undefined ? { tiktokTestEventCode: b.tiktokTestEventCode || null } : {}),
     },
   });
   return NextResponse.json({ store });

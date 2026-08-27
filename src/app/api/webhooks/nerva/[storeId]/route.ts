@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyNervaWebhook } from "@/lib/nerva";
+import { sendPurchaseConversions } from "@/lib/capi";
 import { OrderStatus } from "@prisma/client";
 
 // Mapa evento Nerva -> status interno
@@ -125,6 +126,14 @@ export async function POST(
         : {}),
     },
   });
+
+  // Conversions API própria (Meta CAPI + TikTok Events API).
+  // SEM await de propósito: o webhook precisa responder rápido, senão a
+  // Nerva re-tenta 4x. O processo é um Node de vida longa (pm2), então a
+  // promise termina depois da resposta. Erros ficam gravados no pedido.
+  if (newStatus === OrderStatus.PAID) {
+    void sendPurchaseConversions(order.id);
+  }
 
   // Aqui, no futuro: liberar acesso, disparar e-mail, order bump, etc.
 

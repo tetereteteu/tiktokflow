@@ -172,6 +172,7 @@ src/
     TrackingCapture.tsx                 captura UTM / fbclid / ttclid / cookies
   lib/
     nerva.ts                            client da Nerva + verificação de webhook
+    capi.ts                             Meta CAPI + TikTok Events API (disparo próprio)
     tracking.ts                         monta o payload de tracking server-side
     prisma.ts                           conexão com o banco
     auth.ts                             sessão do painel (JWT em cookie)

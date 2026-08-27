@@ -38,6 +38,11 @@ export async function POST(req: NextRequest) {
       metaPixelId: b.metaPixelId || null,
       tiktokPixelId: b.tiktokPixelId || null,
       googleAdsId: b.googleAdsId || null,
+      capiOwn: !!b.capiOwn,
+      metaAccessToken: b.metaAccessToken || null,
+      metaTestEventCode: b.metaTestEventCode || null,
+      tiktokAccessToken: b.tiktokAccessToken || null,
+      tiktokTestEventCode: b.tiktokTestEventCode || null,
     },
   });
   return NextResponse.json({ store });

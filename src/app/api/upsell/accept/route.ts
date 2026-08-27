@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       isUpsell: true,
       customerName: original.customerName,
       customerEmail: original.customerEmail,
+      customerPhone: original.customerPhone,
       customerDocument: original.customerDocument,
       amountCents: upsell.priceCents,
       status: "PENDING",

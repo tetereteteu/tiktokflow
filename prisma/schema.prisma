@@ -49,6 +49,15 @@ model Store {
   tiktokPixelId String? // ID do Pixel do TikTok
   googleAdsId   String? // ex: AW-XXXXXXXXX (opcional)
 
+  // Conversions API PRÓPRIA — dispara Meta CAPI / TikTok Events API daqui,
+  // sem depender do gateway. Ligue capiOwn E desligue a integração
+  // equivalente no painel da Nerva, senão a compra conta duas vezes.
+  capiOwn             Boolean @default(false)
+  metaAccessToken     String? @db.Text // token da Conversions API do Meta
+  metaTestEventCode   String? // TESTxxxxx — aba Testar Eventos (opcional)
+  tiktokAccessToken   String? @db.Text // token da Events API do TikTok
+  tiktokTestEventCode String? // código de teste do TikTok (opcional)
+
   owner    User        @relation(fields: [ownerId], references: [id])
   ownerId  String
   products Product[]
@@ -97,6 +106,7 @@ model Order {
   // Dados do comprador
   customerName     String?
   customerEmail    String?
+  customerPhone    String? // usado no match da Conversions API (hash SHA-256)
   customerDocument String // CPF — obrigatório pela Nerva
 
   amountCents Int // valor cobrado, em centavos (produto + bump, se houver)
@@ -131,6 +141,13 @@ model Order {
   nervaTxId    String? // transactionId (adquirente)
   pixCode      String? @db.Text // copia-e-cola
   pixQrCodeUrl String? @db.Text // url do QR
+
+  // Conversions API própria — carimbo de sucesso garante disparo ÚNICO
+  // mesmo com as re-tentativas do webhook. Erro fica gravado pra diagnóstico.
+  metaCapiAt      DateTime?
+  metaCapiError   String?   @db.Text
+  tiktokCapiAt    DateTime?
+  tiktokCapiError String?   @db.Text
 
   paidAt    DateTime?
   createdAt DateTime  @default(now())

@@ -58,9 +58,13 @@ Regras que quebram dinheiro ou atribuição se violadas:
 `src/lib/tracking.ts` captura UTMs, `fbclid`/`ttclid`/`gclid` e os cookies `_fbp`/`_fbc`, persistindo em `localStorage` sob `trk_*` (a query some quando o cliente navega antes de comprar). Esses dados vão por dois caminhos:
 
 1. **Browser** — `src/components/Pixels.tsx` dispara Meta Pixel e TikTok Pixel.
-2. **Server** — objeto `tracking` no `POST /sales`; **é a Nerva que dispara Meta CAPI e TikTok Events API** quando a venda é paga. Este app não fala com as APIs de conversão diretamente.
+2. **Server** — dois caminhos, escolhidos **por loja** no campo `Store.capiOwn`:
+   - `capiOwn = false` (padrão): sobe só o objeto `tracking` no `POST /sales` e **é a Nerva que dispara** Meta CAPI e TikTok Events API quando a venda é paga.
+   - `capiOwn = true`: `src/lib/capi.ts` dispara **direto daqui**, no webhook, assim que o pedido vira `PAID` — usando `Store.metaAccessToken` / `Store.tiktokAccessToken`. Nesse modo, **desligue a integração equivalente no painel da Nerva**, senão a mesma venda vai pelos dois caminhos.
 
-Os dois lados compartilham o mesmo `eventId` (`makeEventId(orderId)` → `purchase_${orderId}`). **Mudar esse formato quebra a deduplicação** de eventos no Meta e no TikTok.
+   O disparo próprio é `void` no webhook (sem `await`): a resposta 200 tem que sair rápido. Sucesso carimba `Order.metaCapiAt` / `Order.tiktokCapiAt`, o que torna o envio único mesmo com as re-tentativas da Nerva; falha fica em `Order.metaCapiError` / `tiktokCapiError`. Nada em `capi.ts` pode lançar pra fora.
+
+Os dois lados compartilham o mesmo `eventId` (`makeEventId(orderId)` → `purchase_${orderId}`) e o mesmo nome de evento (Meta `Purchase`, TikTok `CompletePayment`). **Mudar qualquer um dos dois quebra a deduplicação** e a compra conta duas vezes.
 
 ### Catálogo
 
