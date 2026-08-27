@@ -65,6 +65,8 @@ model Store {
   bumps    OrderBump[]
   upsells  Upsell[]
 
+  checkoutTheme CheckoutTheme?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -201,4 +203,56 @@ model Upsell {
   updatedAt      DateTime @updatedAt
 
   @@index([storeId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Aparência do checkout, editável no painel (Construtor).
+// Uma por loja. As cores viram CSS custom properties na página
+// de checkout — por isso o construtor muda o layout inteiro sem
+// tocar no componente.
+// ─────────────────────────────────────────────────────────────
+model CheckoutTheme {
+  id      String @id @default(uuid())
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String @unique
+
+  // Identidade visual (hex) — sobrescrevem os tokens de globals.css
+  brandColor String @default("#d4a012") // CTA, preços e destaques
+  bgColor    String @default("#08080b")
+  cardColor  String @default("#14141c")
+  textColor  String @default("#f4f4f7")
+  radiusPx   Int    @default(14)
+
+  // Banner do topo (URL de imagem; mobile cai no desktop se vazio)
+  bannerDesktopUrl String?
+  bannerMobileUrl  String?
+
+  // Barra de avisos fixa no topo
+  noticeEnabled Boolean @default(false)
+  noticeText    String?
+  noticeBg      String  @default("#d4a012")
+  noticeColor   String  @default("#08080b")
+
+  // Cronômetro de escassez
+  countdownEnabled Boolean @default(false)
+  countdownMinutes Int     @default(15)
+  countdownText    String  @default("Oferta reservada por")
+
+  // Prova social
+  socialProofEnabled Boolean @default(false)
+  socialProofText    String?
+  socialProofAvatars Boolean @default(true)
+
+  // Selos de segurança abaixo do botão
+  badgesEnabled Boolean @default(true)
+
+  // Textos. {valor} no ctaText é trocado pelo total formatado.
+  ctaText    String  @default("Pagar {valor}")
+  footerText String?
+
+  // Escape hatch: CSS injetado por último, sobrescreve tudo.
+  customCss String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

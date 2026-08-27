@@ -8,6 +8,11 @@ import {
   trackInitiateCheckout,
   trackPurchase,
 } from "@/components/Pixels";
+import type { CheckoutThemeData } from "@/lib/checkout-theme";
+import { themeCss, ctaLabel } from "@/lib/checkout-theme";
+import {
+  NoticeBar, Banner, Countdown, SocialProof, SecurityBadges, FooterNote,
+} from "@/components/CheckoutChrome";
 
 type Product = {
   id: string;
@@ -46,6 +51,7 @@ function maskCpf(v: string) {
 type Stage = "form" | "pix" | "paid";
 
 export default function CheckoutClient({
+  theme,
   storeName,
   storeSlug,
   metaPixelId,
@@ -54,6 +60,7 @@ export default function CheckoutClient({
   bump,
   upsell,
 }: {
+  theme: CheckoutThemeData;
   storeName: string;
   storeSlug: string;
   metaPixelId?: string | null;
@@ -212,8 +219,13 @@ export default function CheckoutClient({
   }, [upsellStage, upsellOrderId, upsell]);
 
   return (
+    <>
+      {/* O tema sobrescreve os tokens de globals.css — repinta a tela toda. */}
+      <style>{themeCss(theme)}</style>
+      <NoticeBar t={theme} />
     <main className="wrap" style={{ maxWidth: 460, paddingBottom: 60 }}>
       <PixelLoader metaPixelId={metaPixelId} tiktokPixelId={tiktokPixelId} />
+      <div style={{ paddingTop: 16 }}><Banner t={theme} /></div>
 
       <a href={`/${storeSlug}`} className="dim"
         style={{ display: "inline-block", padding: "24px 0 8px", fontSize: 13 }}>
@@ -235,6 +247,8 @@ export default function CheckoutClient({
           </div>
         </div>
       </div>
+
+      {stage === "form" && <Countdown t={theme} storageKey={product.id} />}
 
       {stage === "form" && (
         <div className="card" style={{ marginTop: 16 }}>
@@ -278,11 +292,10 @@ export default function CheckoutClient({
           {error && <p style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 12px" }}>{error}</p>}
 
           <button className="btn btn--gold" onClick={handleSubmit} disabled={loading}>
-            {loading ? "Gerando Pix..." : `Pagar ${brl(total)}`}
+            {loading ? "Gerando Pix..." : ctaLabel(theme, brl(total))}
           </button>
-          <p className="dim" style={{ textAlign: "center", fontSize: 12, marginTop: 10 }}>
-            Pagamento via Pix · aprovação na hora
-          </p>
+          <SecurityBadges t={theme} />
+          <SocialProof t={theme} />
         </div>
       )}
 
@@ -405,6 +418,8 @@ export default function CheckoutClient({
         </>
       )}
 
+      <FooterNote t={theme} />
+
       <style>{`
         .pulse-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber);
           display: inline-block; animation: pulse 1.4s ease-in-out infinite; }
@@ -412,5 +427,6 @@ export default function CheckoutClient({
           50% { opacity: 0.4; transform: scale(0.8); } }
       `}</style>
     </main>
+    </>
   );
 }

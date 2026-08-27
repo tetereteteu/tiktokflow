@@ -7,6 +7,7 @@ export default function PainelNav({ email }: { email: string }) {
     { href: "/painel/lojas", label: "Lojas" },
     { href: "/painel/produtos", label: "Produtos" },
     { href: "/painel/ofertas", label: "Ofertas" },
+    { href: "/painel/checkout", label: "Checkout" },
     { href: "/painel/catalogo", label: "Catálogo" },
     { href: "/painel/recuperacao", label: "Recuperação" },
   ];

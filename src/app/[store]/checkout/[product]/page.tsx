@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import CheckoutClient from "./CheckoutClient";
+import { resolveTheme } from "@/lib/checkout-theme";
 
 export default async function CheckoutPage({
   params,
@@ -62,8 +63,14 @@ export default async function CheckoutPage({
     orderBy: { createdAt: "asc" },
   });
 
+  // aparência definida no Construtor; sem linha no banco, usa o padrão
+  const theme = resolveTheme(
+    await prisma.checkoutTheme.findUnique({ where: { storeId: store.id } }),
+  );
+
   return (
     <CheckoutClient
+      theme={theme}
       storeName={store.name}
       storeSlug={store.slug}
       metaPixelId={store.metaPixelId}
