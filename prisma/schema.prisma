@@ -52,6 +52,14 @@ model Store {
   // Conversions API PRÓPRIA — dispara Meta CAPI / TikTok Events API daqui,
   // sem depender do gateway. Ligue capiOwn E desligue a integração
   // equivalente no painel da Nerva, senão a compra conta duas vezes.
+  // TikTok Marketing API — criação de campanha pelo painel.
+  // ATENÇÃO: tiktokBusinessToken é OUTRO token, diferente do
+  // tiktokAccessToken (que é só da Events API). Escopos distintos.
+  tiktokAdvertiserId  String?
+  tiktokBusinessToken String? @db.Text
+  tiktokBcId          String? // Business Center — exigido pelo catálogo
+  tiktokCatalogId     String? // catálogo criado/vinculado pelo painel
+
   capiOwn             Boolean @default(false)
   metaAccessToken     String? @db.Text // token da Conversions API do Meta
   metaTestEventCode   String? // TESTxxxxx — aba Testar Eventos (opcional)
@@ -66,6 +74,8 @@ model Store {
   upsells  Upsell[]
 
   checkoutTheme CheckoutTheme?
+  campaigns     AdCampaign[]
+  adSpend       AdSpend[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -255,4 +265,69 @@ model CheckoutTheme {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum AdPlatform {
+  TIKTOK
+  META
+  MANUAL
+}
+
+// ─────────────────────────────────────────────────────────────
+// Campanha criada pelo painel. Guarda os ids que a plataforma
+// devolve em cada etapa (campanha → conjunto → anúncio) pra que
+// uma falha no meio não deixe órfão invisível: o que já subiu
+// fica registrado e o erro fica legível em lastError.
+// ─────────────────────────────────────────────────────────────
+model AdCampaign {
+  id      String @id @default(uuid())
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String
+
+  platform    AdPlatform @default(TIKTOK)
+  name        String
+  objective   String
+  budgetCents Int
+  productId   String? // produto anunciado (id solto, sem FK)
+
+  externalCampaignId String?
+  externalAdgroupId  String?
+  externalAdId       String?
+
+  status    String  @default("CRIANDO") // CRIANDO | ATIVA | ERRO
+  lastError String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Gasto de anúncio por dia. Alimentado pela sincronia com o
+// TikTok ou digitado à mão (plataforma MANUAL) — é o que permite
+// o BI cruzar receita com custo e mostrar lucro de verdade.
+//
+// externalCampaignId usa "" em vez de null de propósito: no
+// Postgres NULLs são distintos entre si, e a chave única não
+// deduplicaria as linhas agregadas da loja.
+// ─────────────────────────────────────────────────────────────
+model AdSpend {
+  id      String @id @default(uuid())
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String
+
+  platform           AdPlatform @default(TIKTOK)
+  date               DateTime   @db.Date
+  externalCampaignId String     @default("")
+
+  spendCents  Int @default(0)
+  impressions Int @default(0)
+  clicks      Int @default(0)
+  conversions Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, platform, date, externalCampaignId])
+  @@index([storeId, date])
 }

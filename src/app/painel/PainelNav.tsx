@@ -4,11 +4,13 @@ import LogoutButton from "./LogoutButton";
 export default function PainelNav({ email }: { email: string }) {
   const items = [
     { href: "/painel", label: "Pedidos" },
+    { href: "/painel/bi", label: "BI" },
     { href: "/painel/lojas", label: "Lojas" },
     { href: "/painel/produtos", label: "Produtos" },
     { href: "/painel/ofertas", label: "Ofertas" },
     { href: "/painel/checkout", label: "Checkout" },
     { href: "/painel/catalogo", label: "Catálogo" },
+    { href: "/painel/anuncios", label: "Anúncios" },
     { href: "/painel/recuperacao", label: "Recuperação" },
   ];
   return (

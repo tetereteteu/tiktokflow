@@ -173,6 +173,8 @@ src/
   lib/
     nerva.ts                            client da Nerva + verificação de webhook
     capi.ts                             Meta CAPI + TikTok Events API (disparo próprio)
+    tiktok-ads.ts                       Marketing API: catálogo + campanha
+    checkout-theme.ts                   tema do checkout + preview do construtor
     tracking.ts                         monta o payload de tracking server-side
     prisma.ts                           conexão com o banco
     auth.ts                             sessão do painel (JWT em cookie)

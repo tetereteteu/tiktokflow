@@ -45,6 +45,9 @@ export async function PATCH(
       ...(b.metaTestEventCode !== undefined ? { metaTestEventCode: b.metaTestEventCode || null } : {}),
       ...(b.tiktokAccessToken !== undefined ? { tiktokAccessToken: b.tiktokAccessToken || null } : {}),
       ...(b.tiktokTestEventCode !== undefined ? { tiktokTestEventCode: b.tiktokTestEventCode || null } : {}),
+      ...(b.tiktokAdvertiserId !== undefined ? { tiktokAdvertiserId: b.tiktokAdvertiserId || null } : {}),
+      ...(b.tiktokBusinessToken !== undefined ? { tiktokBusinessToken: b.tiktokBusinessToken || null } : {}),
+      ...(b.tiktokBcId !== undefined ? { tiktokBcId: b.tiktokBcId || null } : {}),
     },
   });
   return NextResponse.json({ store });

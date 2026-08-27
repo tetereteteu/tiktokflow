@@ -66,6 +66,49 @@ Regras que quebram dinheiro ou atribuição se violadas:
 
 Os dois lados compartilham o mesmo `eventId` (`makeEventId(orderId)` → `purchase_${orderId}`) e o mesmo nome de evento (Meta `Purchase`, TikTok `CompletePayment`). **Mudar qualquer um dos dois quebra a deduplicação** e a compra conta duas vezes.
 
+### Construtor de checkout
+
+`CheckoutTheme` (uma por loja) guarda a aparência. O truque é não reescrever a
+tela: `themeCss()` emite **overrides das CSS custom properties** de
+`globals.css`, e como o checkout inteiro já usa `var(--gold)` / `var(--bg-card)`,
+trocar os tokens repinta tudo — inclusive o que for criado depois. Borda, campo
+e elevação são derivados da cor do cartão por clareamento.
+
+**`customCss` é texto de inquilino indo pra página pública.** `cleanCustomCss()`
+remove `<` e `>` (nenhum CSS legítimo precisa deles) e toda cor passa por
+`hex()`. Não afrouxe isso: sem o corte, `</style><script>` vira XSS armazenado.
+O preview do painel é `<iframe srcDoc>` justamente pra isolar esse CSS.
+
+### Anúncios (TikTok Marketing API)
+
+`src/lib/tiktok-ads.ts` cria campanha → conjunto → anúncio direto do painel, e
+publica o catálogo apontando pro feed CSV que o app já serve.
+
+- **São DOIS tokens diferentes de TikTok.** `tiktokAccessToken` é da Events API
+  (conversão); `tiktokBusinessToken` é da Marketing API (gestão de anúncio).
+  Escopos distintos — não unifique os campos.
+- A API responde HTTP 200 mesmo em erro: o que vale é `code` (0 = ok). Erro de
+  negócio é **permanente**; repetir só queima cota.
+- Campanha nasce com `operation_status: DISABLE`. **Mantenha assim** — ninguém
+  deve queimar verba por um clique errado no painel.
+- Cada etapa grava o id devolvido antes de seguir: falha no meio deixa registro
+  em `AdCampaign.lastError` em vez de órfão invisível na conta de anúncio.
+- Região e identidade são **lidas da conta** (`/tool/region/`, `/identity/get/`),
+  nunca chutadas.
+
+### BI
+
+`/painel/bi` cruza `Order` (receita) com `AdSpend` (custo) — é o que permite
+mostrar lucro e ROAS, não só faturamento. `AdSpend` é preenchido pela sincronia
+com o TikTok (upsert por loja+plataforma+dia+campanha, então re-sincronizar
+corrige em vez de duplicar) ou à mão com `platform: MANUAL`.
+
+Regras dos gráficos, se for mexer: receita e gasto são ambos em reais e dividem
+**um** eixo (dois eixos y inventam correlação); a paleta categórica
+(`#3987e5` / `#d95926`) foi validada contra a superfície real `#14141c` —
+banda de luminosidade, croma, separação para daltonismo e contraste; cor nunca
+carrega sentido sozinha (legenda + rótulo direto + tabela-espelho).
+
 ### Catálogo
 
 `/catalog/{slug}/feed.csv` é público e serve colunas padrão (TikTok Catalog Manager, Meta Catalog, Google Merchant). O `link` de cada linha aponta direto pro checkout do produto, não pra uma página de produto. É esse feed que alimenta Video Shopping Ads / DSA.
