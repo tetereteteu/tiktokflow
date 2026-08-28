@@ -92,8 +92,9 @@ export default async function DominiosPage() {
               Cadastrar o domínio na loja em <Link href="/painel/lojas" style={{ color: "var(--gold-soft)" }}>Lojas</Link>.
             </li>
             <li>
-              Falta implementar: um middleware que resolva o host da requisição para a loja
-              certa. Sem ele o domínio até responde, mas cai na página inicial em vez da vitrine.
+              Pronto: o roteamento por domínio já funciona. Com o DNS apontado e o domínio
+              cadastrado, a raiz do domínio serve a vitrine e <code>/checkout/&#123;produto&#125;</code>{" "}
+              cai no checkout certo.
             </li>
           </ol>
           <p className="dim" style={{ fontSize: 12.5, marginTop: 14, lineHeight: 1.55 }}>

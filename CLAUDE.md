@@ -66,7 +66,7 @@ POST /api/webhooks/nerva/{storeId}   ← FONTE DA VERDADE do status
    ↓
 GET /api/orders/{orderId}/status     ← polling da tela de checkout
    ↓
-/{store}/pos-compra/{orderId}        ← upsell → POST /api/upsell/accept (novo Order, reusa CPF e tracking)
+upsell na própria tela de checkout   ← POST /api/upsell/accept (novo Order, reusa CPF e tracking)
 ```
 
 Regras que quebram dinheiro ou atribuição se violadas:
@@ -180,6 +180,35 @@ Regras dos gráficos, se for mexer: receita e gasto são ambos em reais e divide
 (`#3987e5` / `#d95926`) foi validada contra a superfície real `#14141c` —
 banda de luminosidade, croma, separação para daltonismo e contraste; cor nunca
 carrega sentido sozinha (legenda + rótulo direto + tabela-espelho).
+
+### Domínio próprio
+
+`src/middleware.ts` reescreve o host para a vitrine: domínio cadastrado em
+`Store.domain` serve `/{slug}` na raiz, e `/checkout/x` vira `/{slug}/checkout/x`.
+
+- **A resolução não é feita no middleware** — ele roda no edge, onde o Prisma não
+  existe. Vai por `/api/dominios/resolver`, com cache de 60s num `Map` de módulo
+  (o app roda em processo único sob pm2, então o cache é realmente compartilhado).
+- **Guarda contra prefixo duplo:** a vitrine monta links absolutos com o slug
+  (`/{slug}/checkout/x`). Sem a checagem `pathname.startsWith('/' + slug)`, clicar
+  num produto no domínio próprio viraria `/{slug}/{slug}/checkout/x` e daria 404.
+- `/api`, `/painel`, `/catalog` e `/_next` nunca são reescritos: o feed já carrega
+  o slug na própria URL.
+
+### Redirecionamento pós-pagamento
+
+`Store.redirectUrl` (+ `redirectSkipUpsell`) e `Product.redirectUrl`, que
+sobrescreve o da loja. Vazio mantém o cliente no checkout, onde fica o upsell.
+
+- **`montarUrlDestino` valida o protocolo.** A URL é texto de inquilino indo para
+  `window.location`: `javascript:` ali é XSS armazenado. Só `http` e `https`
+  passam; inválida não redireciona, e o cliente fica no checkout em vez de cair
+  numa página quebrada.
+- **O salto espera 1,2s.** Navegar na hora mata a requisição do pixel de Purchase
+  recém-disparada e a venda some da atribuição.
+- Com upsell ativo, o redirecionamento só acontece ao fim do fluxo — a menos que
+  `redirectSkipUpsell` esteja ligado, e aí a tela avisa que a receita do upsell
+  some junto.
 
 ### Coleções
 

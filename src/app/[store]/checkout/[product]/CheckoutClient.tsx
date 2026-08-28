@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { collectTracking } from "@/lib/tracking";
+import { montarUrlDestino } from "@/lib/redirecionamento";
 import {
   PixelLoader,
   trackInitiateCheckout,
@@ -59,6 +60,8 @@ export default function CheckoutClient({
   product,
   bump,
   upsell,
+  redirectUrl,
+  redirectSkipUpsell,
 }: {
   theme: CheckoutThemeData;
   storeName: string;
@@ -68,6 +71,8 @@ export default function CheckoutClient({
   product: Product;
   bump: Bump;
   upsell: Upsell;
+  redirectUrl: string | null;
+  redirectSkipUpsell: boolean;
 }) {
   const [stage, setStage] = useState<Stage>("form");
   const [name, setName] = useState("");
@@ -92,6 +97,7 @@ export default function CheckoutClient({
   const [upsellPix, setUpsellPix] = useState("");
   const [upsellQr, setUpsellQr] = useState("");
   const [upsellCopied, setUpsellCopied] = useState(false);
+  const [redirecionando, setRedirecionando] = useState(false);
 
   const total = product.priceCents + (bumpOn && bump ? bump.priceCents : 0);
 
@@ -217,6 +223,44 @@ export default function CheckoutClient({
     }, 4000);
     return () => { if (upPollRef.current) clearInterval(upPollRef.current); };
   }, [upsellStage, upsellOrderId, upsell]);
+
+  // ---- destino pós-pagamento ----
+  // Só sai depois que o fluxo acabou: com upsell ativo, espera ele
+  // terminar; sem upsell (ou com o pulo ligado), vai direto.
+  //
+  // O atraso de 1,2s não é estética: navegar na hora mata a
+  // requisição do pixel de Purchase, que acabou de ser disparada, e a
+  // venda some da atribuição.
+  useEffect(() => {
+    if (!redirectUrl || redirecionando) return;
+
+    const fluxoTerminou =
+      stage === "paid" && (redirectSkipUpsell || !upsell || upsellStage === "done");
+    if (!fluxoTerminou) return;
+
+    const t = collectTracking();
+    const destino = montarUrlDestino(redirectUrl, {
+      order: orderId,
+      utm_source: t.utmSource,
+      utm_medium: t.utmMedium,
+      utm_campaign: t.utmCampaign,
+      utm_content: t.utmContent,
+      utm_term: t.utmTerm,
+      fbclid: t.fbclid,
+      ttclid: t.ttclid,
+      gclid: t.gclid,
+    });
+    if (!destino) return; // URL inválida ou protocolo barrado: fica na tela
+
+    setRedirecionando(true);
+    const timer = setTimeout(() => {
+      window.location.href = destino;
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [
+    stage, upsellStage, upsell, orderId,
+    redirectUrl, redirectSkipUpsell, redirecionando,
+  ]);
 
   return (
     <>

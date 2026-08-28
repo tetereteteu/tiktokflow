@@ -19,6 +19,8 @@ export default async function CheckoutPage({
       slug: true,
       metaPixelId: true,
       tiktokPixelId: true,
+      redirectUrl: true,
+      redirectSkipUpsell: true,
     },
   });
   if (!store) notFound();
@@ -32,6 +34,7 @@ export default async function CheckoutPage({
       priceCents: true,
       compareAtCents: true,
       imageUrl: true,
+      redirectUrl: true,
     },
   });
   if (!product) notFound();
@@ -78,6 +81,9 @@ export default async function CheckoutPage({
       product={product}
       bump={bump}
       upsell={upsell}
+      /* o destino do produto sobrescreve o da loja */
+      redirectUrl={product.redirectUrl ?? store.redirectUrl}
+      redirectSkipUpsell={store.redirectSkipUpsell}
     />
   );
 }

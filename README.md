@@ -158,7 +158,8 @@ src/
   app/
     [store]/page.tsx                    vitrine da loja
     [store]/checkout/[product]/         checkout (form + Pix + polling)
-    [store]/pos-compra/[orderId]/       upsell pós-pagamento
+                                        (o upsell acontece dentro do checkout,
+                                         não em página separada)
     catalog/[store]/feed.csv/route.ts   feed CSV (TikTok / Meta / Google)
     painel/                             admin: login, pedidos, lojas,
                                         produtos, ofertas, catálogo, recuperação
