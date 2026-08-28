@@ -74,6 +74,7 @@ model Store {
   upsells  Upsell[]
 
   checkoutTheme CheckoutTheme?
+  collections   Collection[]
   campaigns     AdCampaign[]
   adSpend       AdSpend[]
   contaLotes    AdAccountBatch[]
@@ -99,6 +100,7 @@ model Product {
   active         Boolean  @default(true)
   orders         Order[]
   upsells        Upsell[]
+  collections    Collection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -331,6 +333,37 @@ model AdSpend {
 
   @@unique([storeId, platform, date, externalCampaignId])
   @@index([storeId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Coleção: agrupa produtos de uma loja.
+//
+// Serve pra dois lugares ao mesmo tempo — a vitrine em seções e o
+// feed de catálogo filtrado por tema (/catalog/{loja}/feed.csv?colecao=slug),
+// que é o que permite rodar campanha só de uma linha de produto em
+// vez do catálogo inteiro.
+//
+// A relação com Product é N:N: o mesmo produto pode aparecer em mais
+// de uma coleção, e tirar da coleção não apaga o produto.
+// ─────────────────────────────────────────────────────────────
+model Collection {
+  id      String @id @default(uuid())
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String
+
+  title       String
+  slug        String // usado na URL do feed filtrado
+  description String?
+  active      Boolean @default(true)
+  ordem       Int     @default(0) // posição da seção na vitrine
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, slug]) // slug só precisa ser único dentro da loja
+  @@index([storeId])
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -181,6 +181,28 @@ Regras dos gráficos, se for mexer: receita e gasto são ambos em reais e divide
 banda de luminosidade, croma, separação para daltonismo e contraste; cor nunca
 carrega sentido sozinha (legenda + rótulo direto + tabela-espelho).
 
+### Coleções
+
+`Collection` agrupa produtos de uma loja em N:N (o mesmo produto pode estar em
+várias, e tirar da coleção não apaga o produto). Alimenta dois lugares:
+
+- **Vitrine em seções** — `/{loja}` sai por coleção ativa, na `ordem` definida no
+  painel. Produto fora de toda coleção cai numa seção final "Mais produtos": sem
+  isso, esquecer de cadastrar sumiria com o produto da loja.
+- **Feed filtrado** — `/catalog/{loja}/feed.csv?colecao={slug}` serve só aquela
+  linha, e a coluna `product_type` recebe o nome da coleção (antes era `"Geral"`
+  fixo). É o que permite rodar campanha de um tema só, em vez do catálogo inteiro.
+
+O `slug` é único **por loja** (`@@unique([storeId, slug])`) porque é ele que vai
+na URL do feed. Na edição, os produtos são gravados com `set` e não `connect`: a
+tela manda a lista final, e com `connect` o produto desmarcado continuaria dentro.
+Toda rota confere que o produto pertence à loja antes de vincular — id de outra
+loja vazaria produto entre vitrines.
+
+A montagem do CSV vive em `src/lib/feed-catalogo.ts`, separada da rota pra ser
+testável: é lá que fica a regra de `price` (cheio) vs `sale_price` (promocional),
+que invertida anuncia desconto ao contrário sem gerar erro nenhum.
+
 ### Catálogo
 
 `/catalog/{slug}/feed.csv` é público e serve colunas padrão (TikTok Catalog Manager, Meta Catalog, Google Merchant). O `link` de cada linha aponta direto pro checkout do produto, não pra uma página de produto. É esse feed que alimenta Video Shopping Ads / DSA.
