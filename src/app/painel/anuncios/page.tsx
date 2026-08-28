@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import PainelNav from "../PainelNav";
+import PainelShell from "../PainelShell";
 import AnunciosClient from "./AnunciosClient";
 
 export default async function AnunciosPage() {
@@ -46,9 +46,8 @@ export default async function AnunciosPage() {
   }));
 
   return (
-    <main className="wrap" style={{ paddingBottom: 60, maxWidth: 1100 }}>
-      <PainelNav email={session.email} />
+    <PainelShell email={session.email}>
       <AnunciosClient stores={safe} />
-    </main>
+    </PainelShell>
   );
 }

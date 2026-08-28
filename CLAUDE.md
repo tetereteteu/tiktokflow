@@ -142,7 +142,10 @@ carrega sentido sozinha (legenda + rótulo direto + tabela-espelho).
 - **"Nerva" é o gateway de pagamento, não o nome do projeto.** O projeto se chama **TikTokFlow**. `src/lib/nerva.ts`, `/api/webhooks/nerva/*`, o dourado `--gold` e os rótulos "Gateway Nerva" no painel são a integração — não renomeie.
 - Arquivos importantes abrem com um bloco de comentário `─────` explicando o papel do módulo; mantenha o padrão ao criar arquivos novos.
 - Estilo é CSS puro com design tokens em `src/app/globals.css` (tema escuro) + `style={{}}` inline. Sem Tailwind, sem biblioteca de componentes.
-- Componentes de painel seguem o par `page.tsx` (Server Component: sessão + queries) + `XClient.tsx` (`"use client"`: formulários e interação).
+- Componentes de painel seguem o par `page.tsx` (Server Component: sessão + queries) + `XClient.tsx` (`"use client"`: formulários e interação). Tela só de leitura dispensa o `XClient` e renderiza direto no `page.tsx`.
+- **Toda tela do painel** renderiza `<PainelShell email={session.email}>` como raiz — ele desenha a barra lateral e a área de conteúdo. Não use `<main className="wrap">` no painel: isso é da vitrine.
+- A lista de módulos da lateral é o array `GRUPOS` em `src/app/painel/PainelShell.tsx`, **fonte única da navegação**. Módulo novo entra com uma linha ali; o `tag` controla a etiqueta ("em breve" = só estrutura, "leitura" = mostra dado real mas não edita, sem tag = pronto).
+- Módulo que ainda não tem funcionalidade usa `<ModuloEmBreve>`, que exige declarar o que a tela vai fazer e o que falta pra construir. Serve de especificação na hora de implementar — ao implementar, troque o componente pela tela real e apague a `tag` no `GRUPOS`.
 
 ## Deploy
 

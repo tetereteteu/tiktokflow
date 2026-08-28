@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import PainelNav from "../PainelNav";
+import PainelShell from "../PainelShell";
 import ProdutosClient from "./ProdutosClient";
 
 export default async function ProdutosPage() {
@@ -37,9 +37,8 @@ export default async function ProdutosPage() {
   }));
 
   return (
-    <main className="wrap" style={{ paddingBottom: 60 }}>
-      <PainelNav email={session.email} />
+    <PainelShell email={session.email}>
       <ProdutosClient products={safe} stores={stores} />
-    </main>
+    </PainelShell>
   );
 }

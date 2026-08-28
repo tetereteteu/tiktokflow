@@ -8,7 +8,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import PainelNav from "../PainelNav";
+import PainelShell from "../PainelShell";
 import BiClient from "./BiClient";
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
@@ -101,8 +101,7 @@ export default async function BiPage({
   const valores = pagos.map((p) => p.amountCents);
 
   return (
-    <main className="wrap" style={{ paddingBottom: 60, maxWidth: 1180 }}>
-      <PainelNav email={session.email} />
+    <PainelShell email={session.email}>
       <BiClient
         dias={dias}
         lojas={lojas}
@@ -124,6 +123,6 @@ export default async function BiPage({
         produtos={produtos}
         origens={origens}
       />
-    </main>
+    </PainelShell>
   );
 }

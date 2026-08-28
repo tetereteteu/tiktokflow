@@ -214,3 +214,112 @@ body::before {
     transition: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Shell do painel: barra lateral fixa à esquerda + conteúdo.
+   A lateral rola sozinha (são muitos módulos) e vira uma faixa
+   horizontal abaixo de 900px, onde não cabe coluna.
+   ───────────────────────────────────────────────────────────── */
+
+.painel-shell {
+  display: flex;
+  align-items: flex-start;
+  gap: 26px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.painel-side {
+  position: sticky;
+  top: 0;
+  flex: 0 0 234px;
+  width: 234px;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 20px 0 34px;
+  border-right: 1px solid var(--border);
+}
+
+/* min-width:0 é o que deixa tabela larga rolar dentro do main
+   em vez de empurrar a lateral pra fora da tela */
+.painel-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 22px 0 60px;
+}
+
+.nav-grupo {
+  margin: 18px 0 6px;
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 1px 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.nav-item:hover {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.nav-item--ativo {
+  background: var(--gold-dim);
+  color: var(--gold-soft);
+}
+
+/* marca módulo que ainda é só estrutura, sem funcionalidade */
+.nav-tag {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.nav-item--ativo .nav-tag {
+  border-color: var(--gold-glow);
+  color: var(--gold-soft);
+}
+
+@media (max-width: 900px) {
+  .painel-shell {
+    flex-direction: column;
+    gap: 0;
+    padding: 0 14px;
+  }
+  .painel-side {
+    position: static;
+    flex: none;
+    width: auto;
+    height: auto;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 12px 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: thin;
+  }
+  .painel-side .nav-grupo { display: none; }
+  .nav-item { margin: 0; white-space: nowrap; }
+  .painel-main { padding-top: 18px; }
+}
