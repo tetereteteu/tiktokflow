@@ -188,8 +188,8 @@ rabbitfy_mapa.md                        mapa da plataforma Rabbitfy (pesquisa)
 ```
 
 ## Próximos passos (quando validar)
-Testes automatizados do fluxo de checkout/webhook e múltiplos gateways além da Nerva.
+Múltiplos gateways além da Nerva.
 
-Já entregues: criação de campanha no TikTok direto pelo painel e migrations versionadas
-(`prisma/migrations/`, aplicadas com `npm run db:deploy` — veja a seção Migrations do
-`CLAUDE.md`).
+Já entregues: criação de campanha no TikTok direto pelo painel, migrations versionadas
+(`prisma/migrations/`, aplicadas com `npm run db:deploy`) e testes automatizados do
+webhook (`npm test`). Detalhes nas seções Migrations e Testes do `CLAUDE.md`.
