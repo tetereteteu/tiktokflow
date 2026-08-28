@@ -4,7 +4,7 @@
 // Simples e seguro o suficiente pro MVP; sem libs pesadas.
 // ─────────────────────────────────────────────────────────────
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 
@@ -34,6 +34,22 @@ export async function verifyPassword(
   return bcrypt.compare(plain, hash);
 }
 
+// ─────────────────────────────────────────────────────────────
+// O cookie só leva Secure quando a requisição REALMENTE chegou por
+// HTTPS. Marcar Secure numa resposta HTTP faz o browser descartar o
+// cookie em silêncio: o login responde 200 e a pessoa volta pra tela
+// de login sem mensagem de erro.
+//
+// Não dá pra decidir por NODE_ENV (produção sem domínio ainda é HTTP)
+// nem por APP_BASE_URL (aponta pro domínio final, que pode não ser o
+// endereço usado no acesso). O proxy na frente — Caddy — informa o
+// protocolo de origem em x-forwarded-proto. Sem proxy, o header não
+// existe e tratamos como HTTP.
+// ─────────────────────────────────────────────────────────────
+function servidoPorHttps(): boolean {
+  return headers().get("x-forwarded-proto") === "https";
+}
+
 export async function createSession(session: Session): Promise<void> {
   const token = await new SignJWT({ ...session })
     .setProtectedHeader({ alg: ALG })
@@ -43,7 +59,7 @@ export async function createSession(session: Session): Promise<void> {
 
   cookies().set(COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: servidoPorHttps(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
