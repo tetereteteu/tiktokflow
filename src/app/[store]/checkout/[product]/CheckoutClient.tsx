@@ -62,6 +62,8 @@ export default function CheckoutClient({
   upsell,
   redirectUrl,
   redirectSkipUpsell,
+  fretes,
+  freteGratisAcimaCents,
 }: {
   theme: CheckoutThemeData;
   storeName: string;
@@ -73,6 +75,8 @@ export default function CheckoutClient({
   upsell: Upsell;
   redirectUrl: string | null;
   redirectSkipUpsell: boolean;
+  fretes: { id: string; nome: string; prazoDias: number; priceCents: number }[];
+  freteGratisAcimaCents: number | null;
 }) {
   const [stage, setStage] = useState<Stage>("form");
   const [name, setName] = useState("");
@@ -99,7 +103,20 @@ export default function CheckoutClient({
   const [upsellCopied, setUpsellCopied] = useState(false);
   const [redirecionando, setRedirecionando] = useState(false);
 
-  const total = product.priceCents + (bumpOn && bump ? bump.priceCents : 0);
+  // A primeira faixa já vem marcada: frete em branco faz o cliente
+  // achar que o pedido não vai chegar.
+  const [freteId, setFreteId] = useState(fretes[0]?.id ?? "");
+  const faixa = fretes.find((x) => x.id === freteId) ?? null;
+
+  const subtotal = product.priceCents + (bumpOn && bump ? bump.priceCents : 0);
+  const freteGratis =
+    freteGratisAcimaCents != null &&
+    freteGratisAcimaCents > 0 &&
+    subtotal >= freteGratisAcimaCents;
+  // Espelha calcularFrete do servidor, que é quem manda: aqui é só
+  // exibição, o valor cobrado é sempre recalculado no /api/checkout.
+  const freteCents = !faixa || freteGratis ? 0 : faixa.priceCents;
+  const total = subtotal + freteCents;
 
   // dispara InitiateCheckout uma vez ao montar
   useEffect(() => {
@@ -123,6 +140,7 @@ export default function CheckoutClient({
         body: JSON.stringify({
           productId: product.id,
           bumpId: bumpOn && bump ? bump.id : undefined,
+          shippingRateId: freteId || undefined,
           name, email, document, phone,
           tracking: collectTracking(),
         }),
@@ -334,6 +352,52 @@ export default function CheckoutClient({
           )}
 
           {error && <p style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 12px" }}>{error}</p>}
+
+          {fretes.length > 0 && (
+            <div style={{ margin: "4px 0 16px" }}>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Entrega</div>
+              {fretes.map((fr) => {
+                const gratis = freteGratis;
+                return (
+                  <label
+                    key={fr.id}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "9px 11px", marginBottom: 6,
+                      border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+                      cursor: "pointer", fontSize: 14,
+                      background: freteId === fr.id ? "var(--bg-input)" : "transparent",
+                    }}
+                  >
+                    <input type="radio" name="frete" checked={freteId === fr.id}
+                      onChange={() => setFreteId(fr.id)} />
+                    <span style={{ flex: 1 }}>
+                      {fr.nome}
+                      {fr.prazoDias > 0 && (
+                        <span className="dim" style={{ fontSize: 12, marginLeft: 6 }}>
+                          até {fr.prazoDias} dia{fr.prazoDias > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ color: gratis ? "var(--green)" : "var(--text)", fontWeight: 600 }}>
+                      {gratis ? "grátis" : brl(fr.priceCents)}
+                    </span>
+                  </label>
+                );
+              })}
+              {!freteGratis && freteGratisAcimaCents != null && freteGratisAcimaCents > 0 && (
+                <p className="dim" style={{ fontSize: 12, marginTop: 4 }}>
+                  Frete grátis acima de {brl(freteGratisAcimaCents)} — faltam{" "}
+                  {brl(freteGratisAcimaCents - subtotal)}.
+                </p>
+              )}
+              {freteCents > 0 && (
+                <p className="dim" style={{ fontSize: 12.5, marginTop: 6 }}>
+                  {brl(subtotal)} + {brl(freteCents)} de frete
+                </p>
+              )}
+            </div>
+          )}
 
           <button className="btn btn--gold" onClick={handleSubmit} disabled={loading}>
             {loading ? "Gerando Pix..." : ctaLabel(theme, brl(total))}

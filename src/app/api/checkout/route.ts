@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createNervaSale, toReais, NervaError } from "@/lib/nerva";
 import { makeEventId } from "@/lib/tracking";
+import { calcularFrete } from "@/lib/frete";
+import { limitarExpiracao, montarDescricaoFatura } from "@/lib/pagamentos";
 
 function isValidCpf(raw: string): boolean {
   const cpf = raw.replace(/\D/g, "");
@@ -32,6 +34,7 @@ interface Body {
   document?: string;
   phone?: string;
   isUpsell?: boolean;
+  shippingRateId?: string;
   tracking?: Record<string, string | undefined>;
 }
 
@@ -44,6 +47,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { productId, bumpId, name, email, document, phone, tracking, isUpsell } = body;
+  const shippingRateId = body.shippingRateId;
 
   if (!productId || !document) {
     return NextResponse.json({ error: "Produto e CPF são obrigatórios" }, { status: 400 });
@@ -72,7 +76,23 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const amountCents = product.priceCents + (bump?.priceCents ?? 0);
+  // Frete: o browser manda só o id; o preço sai do banco. Preço de
+  // frete vindo do cliente seria preço escolhido pelo comprador.
+  const faixa = shippingRateId
+    ? await prisma.shippingRate.findFirst({
+        where: { id: shippingRateId, storeId: store.id },
+        select: { id: true, nome: true, priceCents: true, ativo: true },
+      })
+    : null;
+
+  const subtotalCents = product.priceCents + (bump?.priceCents ?? 0);
+  const frete = calcularFrete({
+    faixa,
+    subtotalCents, // sem o frete: senão ele ajudaria a atingir o próprio limite
+    freteGratisAcimaCents: store.freteGratisAcimaCents,
+  });
+
+  const amountCents = subtotalCents + frete.cents;
 
   const clientIp =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
@@ -93,6 +113,9 @@ export async function POST(req: NextRequest) {
       customerPhone: phone || null,
       customerDocument: document.replace(/\D/g, ""),
       amountCents,
+      shippingCents: frete.cents,
+      shippingName: frete.nome,
+      shippingRateId: faixa?.id ?? null,
       status: "PENDING",
       utmSource: t.utmSource || null,
       utmMedium: t.utmMedium || null,
@@ -120,11 +143,11 @@ export async function POST(req: NextRequest) {
       name: name || undefined,
       email: email || undefined,
       phone: phone || undefined,
-      description: bump ? `${product.title} + ${bump.title}` : product.title,
+      description: montarDescricaoFatura(store.faturaDescricao, product.title, bump?.title),
       externalId: order.id,
       idempotencyKey: order.id,
       postbackUrl,
-      expirationInSeconds: 3600,
+      expirationInSeconds: limitarExpiracao(store.pixExpiraSegundos),
       tracking: {
         utmSource: t.utmSource,
         utmMedium: t.utmMedium,

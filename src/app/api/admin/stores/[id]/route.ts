@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, canManageStore } from "@/lib/admin";
+import { limitarExpiracao } from "@/lib/pagamentos";
 
 export async function GET(
   _req: NextRequest,
@@ -38,6 +39,18 @@ export async function PATCH(
       ...(b.nervaApiKey !== undefined ? { nervaApiKey: b.nervaApiKey || null } : {}),
       ...(b.nervaWebhookSecret !== undefined ? { nervaWebhookSecret: b.nervaWebhookSecret || null } : {}),
       ...(b.redirectUrl !== undefined ? { redirectUrl: b.redirectUrl || null } : {}),
+      ...(b.pixExpiraSegundos !== undefined
+        ? { pixExpiraSegundos: limitarExpiracao(b.pixExpiraSegundos) }
+        : {}),
+      ...(b.faturaDescricao !== undefined ? { faturaDescricao: b.faturaDescricao || null } : {}),
+      ...(b.freteGratisAcimaCents !== undefined
+        ? {
+            freteGratisAcimaCents:
+              b.freteGratisAcimaCents === null || b.freteGratisAcimaCents === ""
+                ? null
+                : Math.max(0, Math.round(Number(b.freteGratisAcimaCents))) || null,
+          }
+        : {}),
       ...(b.redirectSkipUpsell !== undefined ? { redirectSkipUpsell: !!b.redirectSkipUpsell } : {}),
       ...(b.metaPixelId !== undefined ? { metaPixelId: b.metaPixelId || null } : {}),
       ...(b.tiktokPixelId !== undefined ? { tiktokPixelId: b.tiktokPixelId || null } : {}),

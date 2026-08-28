@@ -21,6 +21,12 @@ export default async function CheckoutPage({
       tiktokPixelId: true,
       redirectUrl: true,
       redirectSkipUpsell: true,
+      freteGratisAcimaCents: true,
+      shippingRates: {
+        where: { ativo: true },
+        orderBy: [{ ordem: "asc" }, { priceCents: "asc" }],
+        select: { id: true, nome: true, prazoDias: true, priceCents: true },
+      },
     },
   });
   if (!store) notFound();
@@ -84,6 +90,8 @@ export default async function CheckoutPage({
       /* o destino do produto sobrescreve o da loja */
       redirectUrl={product.redirectUrl ?? store.redirectUrl}
       redirectSkipUpsell={store.redirectSkipUpsell}
+      fretes={store.shippingRates}
+      freteGratisAcimaCents={store.freteGratisAcimaCents}
     />
   );
 }

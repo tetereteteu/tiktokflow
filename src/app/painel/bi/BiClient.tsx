@@ -24,6 +24,7 @@ type Produto = { titulo: string; receita: number; qtd: number };
 type Origem = { nome: string; pedidos: number; pagos: number; receita: number };
 type Resumo = {
   receitaCents: number; liquidoCents: number; gastoCents: number; lucroCents: number;
+  freteCents: number;
   pedidos: number; pagos: number; cliques: number; ticketCents: number;
   maiorCents: number; menorCents: number;
   pendentes: number; expirados: number; estornados: number;
@@ -104,6 +105,8 @@ export default function BiClient({
           cor={resumo.lucroCents >= 0 ? "#0ca30c" : "#d03b3b"} />
         <Tile label="ROAS" valor={roas === null ? "—" : `${roas.toFixed(2)}×`}
           nota={roas === null ? "sem gasto no período" : "receita ÷ gasto"} />
+        <Tile label="Frete cobrado" valor={brl(resumo.freteCents)}
+          nota="fora da receita — é repasse à transportadora" />
         <Tile label="Ticket médio" valor={brl(resumo.ticketCents)}
           nota={resumo.pagos ? `maior ${brl(resumo.maiorCents)}` : "—"} />
         <Tile label="Conversão" valor={conversao === null ? "—" : `${conversao.toFixed(1)}%`}
