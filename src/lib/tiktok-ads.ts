@@ -242,3 +242,174 @@ export async function campaignSpend(
   }
   return { result, rows };
 }
+
+// ─────────────────────────────────────────────────────────────
+// Business Center: listar BCs, contar contas e criar conta de
+// anúncio.
+//
+// Contrato conferido no SDK oficial (tiktok/tiktok-business-api-sdk,
+// docs de BCApi e AdvertiserCreateBody), não chutado:
+//   POST /bc/advertiser/create/
+//     obrigatórios: bc_id, advertiser_info, customer_info
+//     opcionais:    contact_info, qualification_info, billing_info
+//
+// ATENÇÃO BRASIL — a doc marca estes campos como "optional" no
+// esquema, mas eles são EXIGIDOS quando a conta ou o BC é
+// registrado no Brasil:
+//   contact_info.email
+//   qualification_info.license_no            (CNPJ)
+//   qualification_info.qualification_image_ids (via /bc/image/upload/)
+//   billing_info.tax_map -> tax_id
+// Faltando qualquer um, a API nega — e negação por falta de campo
+// não vira sucesso por insistência.
+// ─────────────────────────────────────────────────────────────
+
+export const listBusinessCenters = (token: string) =>
+  call(token, "GET", "/bc/get/", { page: 1, page_size: 50 });
+
+/** Conta quantas contas de anúncio o BC já tem (paginando até o fim). */
+export async function countBcAdvertisers(
+  token: string,
+  bcId: string,
+): Promise<{ result: TikTokResult; total: number }> {
+  const result = await call(token, "GET", "/bc/asset/get/", {
+    bc_id: bcId,
+    asset_type: "ADVERTISER",
+    page: 1,
+    page_size: 100,
+  });
+  const info = (result.data as { page_info?: { total_number?: number }; list?: unknown[] } | null);
+  const total =
+    typeof info?.page_info?.total_number === "number"
+      ? info.page_info.total_number
+      : (info?.list?.length ?? 0);
+  return { result, total };
+}
+
+export interface NovaContaInput {
+  bcId: string;
+  /** advertiser_info */
+  name: string;
+  currency: string; // BRL
+  timezone: string; // ex: "America/Sao_Paulo"
+  type?: "AUCTION" | "RESERVATION";
+  /** customer_info (obrigatório) */
+  company: string;
+  industry: number;
+  registeredArea: string; // código de localização, ex: BR
+  /** contact_info — email é exigido no Brasil */
+  contactEmail?: string;
+  contactName?: string;
+  contactNumber?: string;
+  /** qualification_info — license_no e imagens exigidos no Brasil */
+  licenseNo?: string;
+  qualificationImageIds?: string[];
+  promotionLink?: string;
+  /** billing_info — tax_id exigido no Brasil */
+  taxId?: string;
+  billingAddress?: string;
+}
+
+export const createBcAdvertiser = (token: string, i: NovaContaInput) =>
+  call(token, "POST", "/bc/advertiser/create/", {
+    bc_id: i.bcId,
+    advertiser_info: {
+      name: i.name,
+      currency: i.currency,
+      timezone: i.timezone,
+      type: i.type ?? "AUCTION",
+    },
+    customer_info: {
+      company: i.company,
+      industry: i.industry,
+      registered_area: i.registeredArea,
+    },
+    ...(i.contactEmail || i.contactName || i.contactNumber
+      ? {
+          contact_info: {
+            ...(i.contactEmail ? { email: i.contactEmail } : {}),
+            ...(i.contactName ? { name: i.contactName } : {}),
+            ...(i.contactNumber ? { number: i.contactNumber } : {}),
+          },
+        }
+      : {}),
+    ...(i.licenseNo || i.qualificationImageIds?.length || i.promotionLink
+      ? {
+          qualification_info: {
+            ...(i.licenseNo ? { license_no: i.licenseNo } : {}),
+            ...(i.qualificationImageIds?.length
+              ? { qualification_image_ids: i.qualificationImageIds }
+              : {}),
+            ...(i.promotionLink ? { promotion_link: i.promotionLink } : {}),
+          },
+        }
+      : {}),
+    ...(i.taxId || i.billingAddress
+      ? {
+          billing_info: {
+            ...(i.billingAddress ? { address: i.billingAddress } : {}),
+            ...(i.taxId ? { tax_map: { tax_id: i.taxId } } : {}),
+          },
+        }
+      : {}),
+  });
+
+// ─────────────────────────────────────────────────────────────
+// Classificação de erro para a repetição.
+//
+// O dono do projeto observou que algumas negações passam numa
+// tentativa seguinte, então aqui ninguém desiste na primeira. O que
+// muda é QUANTO esperar antes de tentar de novo:
+//
+//   REDE      — timeout/queda: espera curta, é ruído de conexão.
+//   LIMITE    — rate limit: espera longa, é a API pedindo calma.
+//                Insistir rápido aqui piora, gera mais negação.
+//   SERVIDOR  — erro 5xx do lado deles: espera média.
+//   NEGOCIO   — payload/permissão/qualificação: espera longa e
+//                número máximo de tentativas. É o caso do campo
+//                faltando: repetir não conserta, e o motivo fica
+//                visível na tela em vez de virar tentativa infinita.
+//   COTA      — o BC atingiu o limite de contas: para de vez neste
+//                BC. Continuar aqui só marca a conta.
+// ─────────────────────────────────────────────────────────────
+
+export type ClasseErro = "REDE" | "LIMITE" | "SERVIDOR" | "NEGOCIO" | "COTA";
+
+export function classificarErro(r: TikTokResult): ClasseErro {
+  if (r.code === -1) return "REDE";
+
+  const msg = r.message.toLowerCase();
+
+  if (/limit of ad account|account limit|quota (has been )?(reached|exceeded)|maximum number of ad account/.test(msg))
+    return "COTA";
+
+  if (r.code === 40100 || /rate limit|too many request|qps|frequenc/.test(msg))
+    return "LIMITE";
+
+  if (r.code >= 50000 || /internal|server error|timeout|try again later/.test(msg))
+    return "SERVIDOR";
+
+  return "NEGOCIO";
+}
+
+/** Espera antes da próxima tentativa: cresce com a tentativa, com jitter. */
+export function esperaMs(classe: ClasseErro, tentativa: number): number {
+  const base: Record<ClasseErro, number> = {
+    REDE: 1_000,
+    SERVIDOR: 5_000,
+    LIMITE: 30_000,
+    NEGOCIO: 15_000,
+    COTA: 0,
+  };
+  const teto: Record<ClasseErro, number> = {
+    REDE: 30_000,
+    SERVIDOR: 120_000,
+    LIMITE: 300_000,
+    NEGOCIO: 180_000,
+    COTA: 0,
+  };
+  const cru = base[classe] * Math.pow(2, Math.max(0, tentativa - 1));
+  const limitado = Math.min(cru, teto[classe]);
+  // jitter de ±20% pra várias tentativas não baterem no mesmo instante
+  return Math.round(limitado * (0.8 + Math.random() * 0.4));
+}

@@ -120,6 +120,34 @@ publica o catálogo apontando pro feed CSV que o app já serve.
 - Região e identidade são **lidas da conta** (`/tool/region/`, `/identity/get/`),
   nunca chutadas.
 
+### Contas de anúncio em massa
+
+`/painel/contas` cria contas de anúncio até um alvo **por Business Center**
+(`AdAccountBatch` + `AdAccount`). Contrato conferido no SDK oficial
+(`tiktok/tiktok-business-api-sdk`, docs de `BCApi` e `AdvertiserCreateBody`) —
+não invente campo aqui.
+
+- **Conta antes de criar.** `countBcAdvertisers` lê quantas o BC já tem e o lote
+  cria só a diferença: re-rodar completa, não duplica.
+- **O lote roda solto** (`void rodarLote(id)`), como o disparo da CAPI no
+  webhook: com as esperas entre tentativas ele passa de qualquer timeout HTTP. O
+  progresso vive no banco e a tela consulta; `status: "PARADO"` é lido a cada
+  tentativa e serve de botão de parada.
+- **Um lote por loja de cada vez** — dois lotes no mesmo BC disputam a cota e
+  criam conta a mais.
+- **Repetição por classe de erro** (`classificarErro` / `esperaMs`): REDE,
+  SERVIDOR e LIMITE repetem sem teto, com espera crescente e jitter; NEGOCIO tem
+  teto (`maxTentativas`) porque recusa de payload não muda por insistência; COTA
+  para o BC na hora. Rajada é o que dispara o rate limit e gera **mais** recusa —
+  insistir devagar rende mais que insistir rápido.
+- **NEGOCIO esgotado para o BC inteiro**, não só a conta: o payload é o mesmo
+  para as 28, então o que reprova uma reprova todas.
+- **Brasil exige campos que o esquema marca como opcionais**:
+  `contact_info.email`, `qualification_info.license_no` (CNPJ),
+  `qualification_info.qualification_image_ids` (via `/bc/image/upload/`) e
+  `billing_info.tax_map.tax_id`. Sem eles a API recusa — e é recusa de payload,
+  que insistência não resolve.
+
 ### BI
 
 `/painel/bi` cruza `Order` (receita) com `AdSpend` (custo) — é o que permite
@@ -166,7 +194,10 @@ sem perguntar. O script `db:push` continua no `package.json` só para banco desc
 Ao mexer no `schema.prisma`:
 
 1. `npm run db:migrate` — o Prisma gera `prisma/migrations/<timestamp>_<nome>/migration.sql`
-   e aplica no banco local.
+   e aplica no banco local. O `migrate dev` cria um *shadow database* pra conferir
+   o histórico, então o usuário do Postgres precisa de `CREATEDB`
+   (`ALTER ROLE <usuario> CREATEDB;`) — sem isso ele falha com P3014. O
+   `db:deploy`, usado em produção, não precisa disso.
 2. **Leia o SQL antes de commitar.** É ali que um `DROP` aparece. Renomear um campo no
    schema vira drop + add, o que descarta os dados da coluna: nesse caso edite o SQL à mão
    para `ALTER TABLE ... RENAME COLUMN`.

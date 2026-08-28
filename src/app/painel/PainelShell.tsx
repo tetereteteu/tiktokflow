@@ -74,7 +74,7 @@ const GRUPOS: Grupo[] = [
     itens: [
       { href: "/painel/anuncios", label: "TikTok Ads" },
       { href: "/painel/catalogo", label: "Catálogo" },
-      { href: "/painel/campanhas", label: "Campanhas em massa", tag: "em breve" },
+      { href: "/painel/contas", label: "Contas em massa" },
       { href: "/painel/meta-ads", label: "Meta Ads", tag: "em breve" },
     ],
   },
