@@ -53,7 +53,7 @@ Next.js 14 (App Router, Server Components) + Prisma + Postgres. Vitrine, checkou
 
 ### Multi-tenant por `Store`
 
-Não existe configuração global de gateway ou de pixel: **cada `Store` carrega a própria `nervaApiKey`, `nervaWebhookSecret`, `metaPixelId` e `tiktokPixelId`**. Toda rota nova que toque dados de loja precisa resolver a loja primeiro e usar as credenciais dela.
+Não existe configuração global de gateway ou de pixel: **cada `Store` carrega a própria `nervaApiKey`, `nervaWebhookSecret`, `metaPixelId` e `tiktokPixelId`**. A chave e o secret do gateway são editados em `/painel/gateways` (conectar / desconectar por loja), não no formulário de loja — `/painel/lojas` só aponta pra lá. Toda rota nova que toque dados de loja precisa resolver a loja primeiro e usar as credenciais dela.
 
 Autorização: `requireSession()` + `canManageStore()` (`src/lib/admin.ts`) em **toda** rota `/api/admin/*`. `ADMIN` enxerga tudo; `OWNER` só as lojas onde é `ownerId`. Sessão é JWT (`jose`) em cookie httpOnly `nerva_session` — o nome do cookie é legado, não renomeie sem invalidar as sessões ativas.
 

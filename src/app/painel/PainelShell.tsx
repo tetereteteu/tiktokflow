@@ -48,7 +48,7 @@ const GRUPOS: Grupo[] = [
     itens: [
       { href: "/painel/checkout", label: "Construtor" },
       { href: "/painel/pagamentos", label: "Pagamentos", tag: "em breve" },
-      { href: "/painel/gateways", label: "Gateways", tag: "leitura" },
+      { href: "/painel/gateways", label: "Gateways" },
       { href: "/painel/redirecionamento", label: "Redirecionamento" },
     ],
   },
