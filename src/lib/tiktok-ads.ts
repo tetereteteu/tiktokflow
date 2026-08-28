@@ -413,3 +413,61 @@ export function esperaMs(classe: ClasseErro, tentativa: number): number {
   // jitter de ±20% pra várias tentativas não baterem no mesmo instante
   return Math.round(limitado * (0.8 + Math.random() * 0.4));
 }
+
+// ─────────────────────────────────────────────────────────────
+// Upload de certificado (contrato social, CNPJ) para o BC.
+//
+// Devolve o image_id que vai em qualification_info.qualification_image_ids
+// na criação da conta — o campo que o Brasil exige.
+//
+// Não usa o helper `call`: aquele manda Content-Type: application/json,
+// e aqui é multipart. O Content-Type NÃO pode ser definido à mão — o
+// fetch precisa montar o boundary sozinho, senão o servidor não
+// consegue separar as partes.
+//
+// Campos conferidos no SDK oficial (js_sdk/src/api/BCApi.js,
+// bcImageUpload): formParams bc_id + image_file, contentTypes
+// multipart/form-data, header Access-Token.
+// ─────────────────────────────────────────────────────────────
+
+export async function uploadBcImage(
+  token: string,
+  bcId: string,
+  arquivo: Blob,
+  nomeArquivo: string,
+): Promise<TikTokResult<{ image_id?: string }>> {
+  const form = new FormData();
+  form.append("bc_id", bcId);
+  form.append("image_file", arquivo, nomeArquivo);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000); // imagem é maior que JSON
+
+  try {
+    const res = await fetch(`${BASE}/bc/image/upload/`, {
+      method: "POST",
+      headers: { "Access-Token": token }, // sem Content-Type: o fetch põe o boundary
+      body: form,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    const json = (await res.json().catch(() => ({}))) as {
+      code?: number; message?: string; data?: { image_id?: string };
+    };
+    const code = typeof json.code === "number" ? json.code : res.status;
+    return {
+      ok: code === 0,
+      code,
+      message: String(json.message ?? `HTTP ${res.status}`),
+      data: json.data ?? null,
+    };
+  } catch (e) {
+    clearTimeout(timer);
+    return {
+      ok: false, code: -1, data: null,
+      message: e instanceof Error && e.name === "AbortError"
+        ? "timeout no upload (60s)" : e instanceof Error ? e.message : "erro de rede",
+    };
+  }
+}

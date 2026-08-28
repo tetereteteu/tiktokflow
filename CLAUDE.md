@@ -144,9 +144,13 @@ não invente campo aqui.
   para as 28, então o que reprova uma reprova todas.
 - **Brasil exige campos que o esquema marca como opcionais**:
   `contact_info.email`, `qualification_info.license_no` (CNPJ),
-  `qualification_info.qualification_image_ids` (via `/bc/image/upload/`) e
-  `billing_info.tax_map.tax_id`. Sem eles a API recusa — e é recusa de payload,
-  que insistência não resolve.
+  `qualification_info.qualification_image_ids` e `billing_info.tax_map.tax_id`.
+  Sem eles a API recusa — e é recusa de payload, que insistência não resolve.
+- **Upload do certificado** (`uploadBcImage` → `/api/admin/tiktok/imagem`): é o
+  único ponto que fala `multipart/form-data` com o TikTok, então não passa pelo
+  helper `call` (que manda JSON). **Não defina `Content-Type` à mão** — o `fetch`
+  precisa montar o boundary sozinho, senão o servidor não separa as partes. O
+  arquivo sobe pelo servidor, nunca do browser direto: o token é da loja.
 
 ### BI
 

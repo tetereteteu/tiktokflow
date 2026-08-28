@@ -62,6 +62,8 @@ export default function ContasClient({
   const [prog, setProg] = useState<Progresso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [subindo, setSubindo] = useState(false);
+  const [erroUpload, setErroUpload] = useState<string | null>(null);
 
   const loja = lojas.find((l) => l.id === storeId);
 
@@ -117,6 +119,40 @@ export default function ContasClient({
       }
     } finally {
       setEnviando(false);
+    }
+  }
+
+  // Sobe o certificado pelo servidor (o token da loja não pode ir ao
+  // browser) e acrescenta o image_id devolvido à lista.
+  async function subirCertificado(arquivo: File) {
+    setErroUpload(null);
+    const bcId = f.bcIds.split(/[\s,;]+/).filter(Boolean)[0];
+    if (!bcId) {
+      setErroUpload("Preencha o Business Center antes: o upload é feito dentro dele.");
+      return;
+    }
+
+    setSubindo(true);
+    try {
+      const fd = new FormData();
+      fd.append("storeId", storeId);
+      fd.append("bcId", bcId);
+      fd.append("arquivo", arquivo);
+
+      const r = await fetch("/api/admin/tiktok/imagem", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!r.ok) {
+        setErroUpload(j.error ?? "Falha no upload");
+        return;
+      }
+      setF((atual) => ({
+        ...atual,
+        qualificationImageIds: [atual.qualificationImageIds.trim(), j.imageId]
+          .filter(Boolean)
+          .join("\n"),
+      }));
+    } finally {
+      setSubindo(false);
     }
   }
 
@@ -202,11 +238,33 @@ export default function ContasClient({
           <Campo label="CNPJ (license_no)"><Inp v={f.licenseNo} on={(v) => setF({ ...f, licenseNo: v })} ph="obrigatório no Brasil" /></Campo>
           <Campo label="CNPJ de faturamento (tax_id)"><Inp v={f.taxId} on={(v) => setF({ ...f, taxId: v })} ph="obrigatório no Brasil" /></Campo>
         </Linha>
+        <Campo label="Certificados de qualificação">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            disabled={subindo}
+            style={{ fontSize: 13, color: "var(--text-muted)" }}
+            onChange={(e) => {
+              const arq = e.target.files?.[0];
+              if (arq) void subirCertificado(arq);
+              e.target.value = ""; // permite reenviar o mesmo arquivo
+            }}
+          />
+          <p className="dim" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+            {subindo
+              ? "Enviando ao TikTok..."
+              : "Contrato social ou cartão CNPJ. JPG, PNG, WEBP ou PDF, até 10 MB. O arquivo sobe para o primeiro Business Center da lista e o id volta preenchido abaixo."}
+          </p>
+          {erroUpload && (
+            <p style={{ color: "var(--red)", fontSize: 12.5, marginTop: 6 }}>{erroUpload}</p>
+          )}
+        </Campo>
+
         <Campo label="IDs das imagens de qualificação — um por linha">
           <textarea
             className="input" rows={2} value={f.qualificationImageIds}
             onChange={(e) => setF({ ...f, qualificationImageIds: e.target.value })}
-            placeholder="obrigatório no Brasil — obtidos no upload do certificado"
+            placeholder="preenchido pelo upload acima, ou cole ids que você já tem"
           />
         </Campo>
 
