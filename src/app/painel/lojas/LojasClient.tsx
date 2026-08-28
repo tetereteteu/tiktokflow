@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -112,8 +114,6 @@ function StoreForm({ store, onClose, onSaved }: {
     description: store?.description || "",
     domain: store?.domain || "",
     active: store?.active ?? true,
-    nervaApiKey: "",
-    nervaWebhookSecret: "",
     capiOwn: store?.capiOwn ?? false,
     metaAccessToken: "",
     metaTestEventCode: store?.metaTestEventCode || "",
@@ -150,27 +150,6 @@ function StoreForm({ store, onClose, onSaved }: {
     setTesting(false);
   }
 
-  const webhookBase =
-    typeof window !== "undefined" ? window.location.origin : "https://seudominio.com";
-  const webhookUrl = store ? `${webhookBase}/api/webhooks/nerva/${store.id}` : "";
-  const [copied, setCopied] = useState(false);
-
-  // navigator.clipboard só existe em contexto seguro (HTTPS); o fallback cobre o resto.
-  async function copyWebhook() {
-    try {
-      await navigator.clipboard.writeText(webhookUrl);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = webhookUrl;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      ta.remove();
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
   async function save() {
     setSaving(true); setError("");
     try {
@@ -185,8 +164,6 @@ function StoreForm({ store, onClose, onSaved }: {
       payload.capiOwn = f.capiOwn;
       payload.metaTestEventCode = f.metaTestEventCode;
       payload.tiktokTestEventCode = f.tiktokTestEventCode;
-      if (f.nervaApiKey) payload.nervaApiKey = f.nervaApiKey;
-      if (f.nervaWebhookSecret) payload.nervaWebhookSecret = f.nervaWebhookSecret;
       if (f.metaAccessToken) payload.metaAccessToken = f.metaAccessToken;
       if (f.tiktokAccessToken) payload.tiktokAccessToken = f.tiktokAccessToken;
 
@@ -217,29 +194,11 @@ function StoreForm({ store, onClose, onSaved }: {
         <Field label="Domínio próprio (opcional)"><input className="input" value={f.domain}
           onChange={(e) => setF({ ...f, domain: e.target.value })} placeholder="loja.com.br" /></Field>
 
-        <div className="eyebrow" style={{ margin: "18px 0 10px" }}>Gateway Nerva</div>
-        <Field label={store?.hasNervaKey ? "API Key (preenchida — deixe em branco pra manter)" : "API Key (sk_live_...)"}>
-          <input className="input" value={f.nervaApiKey} type="password"
-            onChange={(e) => setF({ ...f, nervaApiKey: e.target.value })}
-            placeholder={store?.hasNervaKey ? "••••••••" : "sk_live_..."} />
-        </Field>
-        <Field label={store?.hasWebhookSecret ? "Webhook secret (preenchido — deixe em branco pra manter)" : "Webhook secret"}>
-          <input className="input" value={f.nervaWebhookSecret} type="password"
-            onChange={(e) => setF({ ...f, nervaWebhookSecret: e.target.value })}
-            placeholder={store?.hasWebhookSecret ? "••••••••" : "secret do webhook"} />
-        </Field>
-        {!isNew && (
-          <div style={{ background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 8, padding: 10, fontSize: 12, marginBottom: 14 }}>
-            <div className="dim" style={{ marginBottom: 4 }}>Cadastre esta URL de webhook no painel da Nerva:</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-              <code style={{ color: "var(--gold)", wordBreak: "break-all", flex: 1 }}>{webhookUrl}</code>
-              <button className="btn btn--ghost" type="button" onClick={copyWebhook}
-                style={{ width: "auto", padding: "4px 10px", fontSize: 11, flexShrink: 0 }}>
-                {copied ? "Copiado!" : "Copiar"}
-              </button>
-            </div>
-          </div>
-        )}
+        <div style={{ background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 8, padding: 11, fontSize: 12.5, margin: "18px 0 14px", lineHeight: 1.55 }} className="muted">
+          A chave e o webhook secret do gateway agora ficam em{" "}
+          <Link href="/painel/gateways" style={{ color: "var(--gold-soft)" }}>Gateways</Link>, que
+          é onde a loja é conectada e onde está a URL de webhook pra cadastrar na Nerva.
+        </div>
 
         <div className="eyebrow" style={{ margin: "18px 0 10px" }}>Pixels de anúncio</div>
         <Field label="Meta Pixel ID"><input className="input" value={f.metaPixelId}
