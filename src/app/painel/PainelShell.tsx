@@ -47,7 +47,7 @@ const GRUPOS: Grupo[] = [
     titulo: "Checkout",
     itens: [
       { href: "/painel/checkout", label: "Construtor" },
-      { href: "/painel/pagamentos", label: "Pagamentos", tag: "em breve" },
+      { href: "/painel/pagamentos", label: "Pagamentos" },
       { href: "/painel/gateways", label: "Gateways" },
       { href: "/painel/redirecionamento", label: "Redirecionamento" },
     ],
@@ -65,8 +65,8 @@ const GRUPOS: Grupo[] = [
   {
     titulo: "Logística",
     itens: [
-      { href: "/painel/fretes", label: "Fretes", tag: "em breve" },
-      { href: "/painel/rastreios", label: "Rastreios", tag: "em breve" },
+      { href: "/painel/fretes", label: "Fretes" },
+      { href: "/painel/rastreios", label: "Rastreios" },
     ],
   },
   {

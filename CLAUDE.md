@@ -210,6 +210,41 @@ sobrescreve o da loja. Vazio mantém o cliente no checkout, onde fica o upsell.
   `redirectSkipUpsell` esteja ligado, e aí a tela avisa que a receita do upsell
   some junto.
 
+### Frete
+
+`ShippingRate` por loja; o checkout mostra as ativas e o cliente escolhe uma.
+
+- **O preço nunca vem do browser.** O checkout manda só o id da faixa e
+  `calcularFrete` resolve o valor no servidor — preço de frete vindo do cliente
+  seria preço escolhido pelo comprador.
+- **`Order.shippingCents` e `shippingName` são cópia**, não referência: a tabela
+  de frete muda e a FK é `ON DELETE SET NULL`, então o pedido antigo continua
+  mostrando o que cobrou.
+- **Frete grátis vale sobre produto + bump, sem o frete** — senão ele ajudaria a
+  atingir o próprio limite. Limite nulo ou zero desliga a regra: sem essa guarda,
+  um campo zerado tornaria todo frete grátis.
+- **O BI desconta o frete da receita e do líquido.** Frete é dinheiro que entra
+  pra ser repassado à transportadora; somado, inflaria ROAS e lucro — justamente
+  a conta que decide quanto se investe em anúncio. Ele aparece num tile próprio.
+
+### Rastreio
+
+`Shipment` tem `orderId` único e a rota faz **upsert**: recadastrar o código do
+mesmo pedido corrige em vez de estourar.
+
+A consulta pública (`/{loja}/rastreio?codigo=`) devolve só o andamento — produto,
+código, transportadora, modalidade e data. **Nada do comprador**: quem digita um
+código não é necessariamente quem comprou, e código pode ser adivinhado. A busca
+é sempre restrita à loja da URL.
+
+### Pagamentos
+
+`Store.pixExpiraSegundos` e `faturaDescricao`, os dois campos que hoje realmente
+chegam ao gateway. `limitarExpiracao` prende entre 300 e 86400 porque a Nerva
+recusa a cobrança fora disso — e recusa aqui é falha silenciosa: o cliente vê
+"erro ao gerar Pix" e vai embora. `null` e `""` caem no padrão de 1h, **não** no
+mínimo: `Number(null)` é `0`, que sem essa guarda viraria Pix de 5 minutos.
+
 ### Coleções
 
 `Collection` agrupa produtos de uma loja em N:N (o mesmo produto pode estar em

@@ -17,6 +17,8 @@ Stack: **Next.js 14 + Postgres + Prisma**. Visual dark com o dourado da Nerva.
 - **Webhook** da Nerva com validação de assinatura HMAC (fonte da verdade do pagamento)
 - **Painel** em `/painel` com login: pedidos em tempo real, KPIs (faturamento, líquido, vendas, pendentes)
 - **CRUD completo pela tela**: criar/editar **lojas** (com API Key Nerva, webhook secret e pixels), **produtos** e **order bumps** — sem tocar no banco
+- **Frete**: faixas por loja no checkout, com frete grátis acima de um valor
+- **Rastreio**: código por pedido e página pública de acompanhamento no domínio da loja
 - **Recuperação**: aba com os Pix pendentes das últimas 48h + contato pra perseguir manualmente
 - **Rastreamento de anúncio desde o início**:
   - Pixels do **Meta** e **TikTok** no browser (PageView, InitiateCheckout, Purchase)

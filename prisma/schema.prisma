@@ -50,6 +50,15 @@ model Store {
   redirectUrl        String?
   redirectSkipUpsell Boolean @default(false) // pula o upsell e vai direto
 
+  // Pagamento. A Nerva aceita expiração de 300 a 86400 segundos —
+  // fora disso ela recusa a cobrança, então o valor é limitado antes
+  // de subir. Vazio em faturaDescricao usa o nome do produto.
+  pixExpiraSegundos Int     @default(3600)
+  faturaDescricao   String?
+
+  // Frete grátis acima deste valor (em centavos). Nulo desliga.
+  freteGratisAcimaCents Int?
+
   metaPixelId   String? // ID do Pixel do Facebook/Meta
   tiktokPixelId String? // ID do Pixel do TikTok
   googleAdsId   String? // ex: AW-XXXXXXXXX (opcional)
@@ -80,6 +89,7 @@ model Store {
 
   checkoutTheme CheckoutTheme?
   collections   Collection[]
+  shippingRates ShippingRate[]
   campaigns     AdCampaign[]
   adSpend       AdSpend[]
   contaLotes    AdAccountBatch[]
@@ -130,9 +140,18 @@ model Order {
   customerPhone    String? // usado no match da Conversions API (hash SHA-256)
   customerDocument String // CPF — obrigatório pela Nerva
 
-  amountCents Int // valor cobrado, em centavos (produto + bump, se houver)
+  amountCents Int // TOTAL cobrado em centavos (produto + bump + frete)
   feeCents    Int? // taxa Nerva (preenchida quando a Nerva responde)
   netCents    Int? // líquido
+
+  // Frete cobrado neste pedido. Fica separado de amountCents porque o
+  // BI não pode contar frete como faturamento de produto.
+  // shippingName é cópia do nome na hora da compra: a tabela de frete
+  // muda, e o pedido antigo tem que continuar mostrando o que cobrou.
+  shippingCents Int     @default(0)
+  shippingName  String?
+  shippingRate  ShippingRate? @relation(fields: [shippingRateId], references: [id])
+  shippingRateId String?
 
   // Order bump aceito neste pedido (opcional)
   bump   OrderBump? @relation(fields: [bumpId], references: [id])
@@ -169,6 +188,8 @@ model Order {
   metaCapiError   String?   @db.Text
   tiktokCapiAt    DateTime?
   tiktokCapiError String?   @db.Text
+
+  shipment  Shipment?
 
   paidAt    DateTime?
   createdAt DateTime  @default(now())
@@ -440,4 +461,47 @@ model AdAccount {
 
   @@index([batchId])
   @@index([bcId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Faixa de frete da loja. O valor é sempre resolvido no servidor a
+// partir do id: preço de frete vindo do browser seria preço
+// escolhido pelo comprador.
+// ─────────────────────────────────────────────────────────────
+model ShippingRate {
+  id      String @id @default(uuid())
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String
+
+  nome       String // "PAC", "Sedex", "Retirada"
+  prazoDias  Int    @default(0)
+  priceCents Int
+  ativo      Boolean @default(true)
+  ordem      Int     @default(0)
+
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Rastreio do pedido. A consulta pública é pelo código, e devolve
+// só o andamento — nada de dado do comprador, porque quem tem o
+// código não é necessariamente quem comprou.
+// ─────────────────────────────────────────────────────────────
+model Shipment {
+  id      String @id @default(uuid())
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String @unique
+
+  codigo         String
+  transportadora String
+  url            String? // link de rastreio da transportadora
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([codigo])
 }
