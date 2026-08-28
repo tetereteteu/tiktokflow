@@ -138,6 +138,10 @@ não invente campo aqui.
   não está fixado em fonte citável (o SDK tipa genérico, o portal de docs é SPA),
   então ela procura cada campo em alguns nomes plausíveis e devolve `null` no
   resto. Não troque por acesso direto a um caminho só: quebraria em silêncio.
+  **Pendente:** assim que houver um `tiktokBusinessToken` real cadastrado, chame
+  `/api/admin/tiktok/bcs` e confira o formato que o TikTok devolve de fato — se
+  os campos vierem estáveis, dá pra estreitar a leitura e apertar os testes. Até
+  lá, a tolerância é proposital e não deve ser "simplificada".
 - **O lote roda solto** (`void rodarLote(id)`), como o disparo da CAPI no
   webhook: com as esperas entre tentativas ele passa de qualquer timeout HTTP. O
   progresso vive no banco e a tela consulta; `status: "PARADO"` é lido a cada
