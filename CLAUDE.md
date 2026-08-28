@@ -12,16 +12,40 @@ npm run dev                # dev em :3000
 npm run build              # prisma generate + next build
 npm run start              # produção
 
-npm run db:push            # aplica o schema no banco (NÃO gera migration)
+npm run db:migrate         # gera a migration a partir do schema e aplica (DEV)
+npm run db:deploy          # aplica as migrations pendentes (PRODUÇÃO)
+npm run db:status          # quais migrations entraram e quais faltam
 npm run db:studio          # Prisma Studio :5555
 SEED_ADMIN_EMAIL="voce@email.com" SEED_ADMIN_PASSWORD="senha" npm run db:seed
 
 npx tsc --noEmit           # checagem de tipos
 ```
 
-**Não existe suíte de testes.** A verificação antes de entregar é `npx tsc --noEmit` seguido de `npm run build`. O build **não precisa de banco no ar** — todas as rotas que consultam o Postgres são dinâmicas (`ƒ`); só `/` e `/painel/login` são estáticas. Basta ter `DATABASE_URL` definida (mesmo apontando pra um banco inexistente).
+**Verificação antes de entregar:** `npm test`, `npx tsc --noEmit` e `npm run build`, nessa ordem. O build **não precisa de banco no ar** — todas as rotas que consultam o Postgres são dinâmicas (`ƒ`); só `/` e `/painel/login` são estáticas. Basta ter `DATABASE_URL` definida (mesmo apontando pra um banco inexistente).
 
 Variáveis (`.env`, modelo em `.env.example`): `DATABASE_URL`, `APP_BASE_URL` (monta a `postbackUrl` do webhook — precisa ser a URL pública real em produção), `AUTH_SECRET`. Opcional: `NERVA_BASE_URL`.
+
+## Testes
+
+`npm test` (Vitest, arquivos em `tests/`). A suíte cobre **só o caminho do
+dinheiro** — é onde um bug não aparece na tela, aparece na conta:
+
+- `tests/nerva-assinatura.test.ts` — HMAC do webhook (corpo adulterado, secret
+  de outra loja, replay fora da janela de 5 min, assinatura de tamanho
+  diferente) e a conversão reais↔centavos.
+- `tests/webhook-rota.test.ts` — cada decisão do handler: 404 sem secret, 401
+  em assinatura inválida, 200 quando não acha o pedido (senão a Nerva re-tenta
+  4x), idempotência do `PAID` e disparo da Conversions API só no pago.
+
+Dois testes existem por causa de regras deste arquivo que quebram dinheiro em
+silêncio. Um assina um corpo **não-canônico** (`97.0`, espaço extra) para travar
+o uso de `req.text()`: trocar por `req.json()` + `JSON.stringify` derruba os dois
+na hora. O outro cobre o arredondamento de centavos.
+
+A suíte foi validada por mutação — afrouxar a janela de replay, re-serializar o
+corpo, remover a guarda de idempotência e truncar centavos em vez de arredondar
+foram todas detectadas. Ao mexer nessa área, quebre o código de propósito e
+confirme que a suíte acusa: teste que passa à toa não protege nada.
 
 ## Arquitetura
 
@@ -122,9 +146,34 @@ carrega sentido sozinha (legenda + rótulo direto + tabela-espelho).
 
 ## Deploy
 
-`ORDENS-VPS.md` tem o passo a passo completo (AWS Lightsail + Neon Postgres + pm2 + Caddy com SSL automático). Atualização em produção: `git pull && npm install && npm run build && pm2 restart tiktokflow`.
+`ORDENS-VPS.md` tem o passo a passo completo (VPS + Postgres + pm2 + Caddy com SSL automático). Atualização em produção:
 
-O schema é aplicado com `prisma db push`, **sem migrations versionadas** — mudança destrutiva no `schema.prisma` derruba dados em produção sem aviso. Migrar pra `prisma migrate` é um dos próximos passos do README.
+```bash
+git pull && npm install && npm run db:deploy && npm run build && pm2 restart tiktokflow
+```
+
+O `db:deploy` vem **antes** do build de propósito: o código novo já espera o schema novo.
+
+### Migrations
+
+O schema é versionado em `prisma/migrations/`. **Não use `prisma db push` em banco com
+dados** — ele reconcilia o schema sem deixar histórico e derruba coluna ou tabela removida
+sem perguntar. O script `db:push` continua no `package.json` só para banco descartável.
+
+Ao mexer no `schema.prisma`:
+
+1. `npm run db:migrate` — o Prisma gera `prisma/migrations/<timestamp>_<nome>/migration.sql`
+   e aplica no banco local.
+2. **Leia o SQL antes de commitar.** É ali que um `DROP` aparece. Renomear um campo no
+   schema vira drop + add, o que descarta os dados da coluna: nesse caso edite o SQL à mão
+   para `ALTER TABLE ... RENAME COLUMN`.
+3. Commite a pasta da migration junto com a mudança do schema — uma sem a outra quebra o
+   próximo deploy.
+4. Em produção, `npm run db:deploy` aplica só o que falta e não gera nada.
+
+`0_init` é o baseline: foi gerada a partir do schema que já rodava e marcada como aplicada
+com `prisma migrate resolve`, então banco existente não a re-executa. `npm run db:status`
+mostra o estado atual.
 
 ## Fora do código
 

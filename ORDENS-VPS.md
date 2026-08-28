@@ -99,8 +99,8 @@ Para gerar o `AUTH_SECRET`, abra outro terminal e rode `openssl rand -hex 32`, c
 Salvar no nano: `Ctrl+O`, `Enter`, `Ctrl+X`.
 
 ```bash
-# criar as tabelas no banco
-npm run db:push
+# criar as tabelas no banco (aplica as migrations versionadas)
+npm run db:deploy
 
 # criar seu usuário admin (troque e-mail e senha)
 SEED_ADMIN_EMAIL="voce@email.com" SEED_ADMIN_PASSWORD="UmaSenhaForte123" npm run db:seed
@@ -177,6 +177,7 @@ Quando eu te mandar código novo:
 cd ~/tiktokflow
 git pull
 npm install
+npm run db:deploy
 npm run build
 pm2 restart tiktokflow
 ```
@@ -187,4 +188,5 @@ pm2 logs tiktokflow      # ver logs em tempo real (erros aparecem aqui)
 pm2 restart tiktokflow   # reiniciar
 pm2 status               # ver se está no ar
 npm run db:studio        # abrir o Prisma Studio pra ver o banco (porta 5555)
+npm run db:status        # ver se falta alguma migration no banco
 ```

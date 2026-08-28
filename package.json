@@ -9,6 +9,10 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"
   },
@@ -32,6 +36,7 @@
     "@types/react-dom": "^18.3.0",
     "prisma": "^5.22.0",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.11"
   }
 }
