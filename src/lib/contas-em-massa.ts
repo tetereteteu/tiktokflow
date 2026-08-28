@@ -31,6 +31,9 @@ import {
   countBcAdvertisers,
   createBcAdvertiser,
   esperaMs,
+  listBusinessCenters,
+  normalizarBcs,
+  type BcResumo,
   type NovaContaInput,
 } from "@/lib/tiktok-ads";
 
@@ -69,7 +72,20 @@ export async function rodarLote(batchId: string): Promise<void> {
       return;
     }
 
+    // A moeda da conta precisa bater com a do BC (doc de
+    // advertiser_info.currency). Como a maioria dos BCs em uso não é
+    // brasileira, herdar do BC evita recusa por moeda incompatível.
+    // Se a lista não vier, cai no molde da tela e segue.
+    const mapaBc = new Map<string, BcResumo>();
+    const listagem = await listBusinessCenters(token);
+    for (const bc of normalizarBcs(listagem.data)) mapaBc.set(bc.bcId, bc);
+
     const notas: string[] = [];
+    if (!listagem.ok) {
+      notas.push(
+        `Não deu pra listar os Business Centers (${listagem.message}) — usando a moeda do formulário.`,
+      );
+    }
 
     for (const bcId of lote.bcIds) {
       if (await foiParado(batchId)) {
@@ -85,9 +101,16 @@ export async function rodarLote(batchId: string): Promise<void> {
         continue;
       }
 
+      const resumo = mapaBc.get(bcId);
+      const moeda = resumo?.moeda ?? lote.currency;
+      const etiqueta =
+        resumo?.nome
+          ? `BC ${bcId} (${resumo.nome}${resumo.pais ? `, ${resumo.pais}` : ""}, ${moeda})`
+          : `BC ${bcId} (${moeda})`;
+
       const faltam = lote.alvoPorBc - existentes;
       if (faltam <= 0) {
-        notas.push(`BC ${bcId}: já tem ${existentes} de ${lote.alvoPorBc}, nada a criar.`);
+        notas.push(`${etiqueta}: já tem ${existentes} de ${lote.alvoPorBc}, nada a criar.`);
         continue;
       }
 
@@ -108,7 +131,7 @@ export async function rodarLote(batchId: string): Promise<void> {
         const molde: NovaContaInput = {
           bcId,
           name: nome,
-          currency: lote.currency,
+          currency: moeda,
           timezone: lote.timezone,
           company: lote.company,
           industry: lote.industry,
@@ -181,7 +204,7 @@ export async function rodarLote(batchId: string): Promise<void> {
       }
 
       notas.push(
-        `BC ${bcId}: ${existentes} existentes, ${criadas} criada(s)` +
+        `${etiqueta}: ${existentes} existentes, ${criadas} criada(s)` +
           (motivoParada ? ` — parou: ${motivoParada}` : " — alvo atingido"),
       );
       if (motivoParada === "parado pelo painel") break;
