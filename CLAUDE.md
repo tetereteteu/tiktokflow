@@ -12,7 +12,9 @@ npm run dev                # dev em :3000
 npm run build              # prisma generate + next build
 npm run start              # produção
 
-npm run db:push            # aplica o schema no banco (NÃO gera migration)
+npm run db:migrate         # gera a migration a partir do schema e aplica (DEV)
+npm run db:deploy          # aplica as migrations pendentes (PRODUÇÃO)
+npm run db:status          # quais migrations entraram e quais faltam
 npm run db:studio          # Prisma Studio :5555
 SEED_ADMIN_EMAIL="voce@email.com" SEED_ADMIN_PASSWORD="senha" npm run db:seed
 
@@ -122,9 +124,34 @@ carrega sentido sozinha (legenda + rótulo direto + tabela-espelho).
 
 ## Deploy
 
-`ORDENS-VPS.md` tem o passo a passo completo (AWS Lightsail + Neon Postgres + pm2 + Caddy com SSL automático). Atualização em produção: `git pull && npm install && npm run build && pm2 restart tiktokflow`.
+`ORDENS-VPS.md` tem o passo a passo completo (VPS + Postgres + pm2 + Caddy com SSL automático). Atualização em produção:
 
-O schema é aplicado com `prisma db push`, **sem migrations versionadas** — mudança destrutiva no `schema.prisma` derruba dados em produção sem aviso. Migrar pra `prisma migrate` é um dos próximos passos do README.
+```bash
+git pull && npm install && npm run db:deploy && npm run build && pm2 restart tiktokflow
+```
+
+O `db:deploy` vem **antes** do build de propósito: o código novo já espera o schema novo.
+
+### Migrations
+
+O schema é versionado em `prisma/migrations/`. **Não use `prisma db push` em banco com
+dados** — ele reconcilia o schema sem deixar histórico e derruba coluna ou tabela removida
+sem perguntar. O script `db:push` continua no `package.json` só para banco descartável.
+
+Ao mexer no `schema.prisma`:
+
+1. `npm run db:migrate` — o Prisma gera `prisma/migrations/<timestamp>_<nome>/migration.sql`
+   e aplica no banco local.
+2. **Leia o SQL antes de commitar.** É ali que um `DROP` aparece. Renomear um campo no
+   schema vira drop + add, o que descarta os dados da coluna: nesse caso edite o SQL à mão
+   para `ALTER TABLE ... RENAME COLUMN`.
+3. Commite a pasta da migration junto com a mudança do schema — uma sem a outra quebra o
+   próximo deploy.
+4. Em produção, `npm run db:deploy` aplica só o que falta e não gera nada.
+
+`0_init` é o baseline: foi gerada a partir do schema que já rodava e marcada como aplicada
+com `prisma migrate resolve`, então banco existente não a re-executa. `npm run db:status`
+mostra o estado atual.
 
 ## Fora do código
 

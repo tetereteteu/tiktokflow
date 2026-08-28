@@ -39,8 +39,8 @@ cp .env.example .env
 # edite o .env e preencha DATABASE_URL, APP_BASE_URL e AUTH_SECRET
 #   - AUTH_SECRET: gere com  ->  openssl rand -hex 32
 
-# 3. criar as tabelas no banco
-npm run db:push
+# 3. criar as tabelas no banco (aplica as migrations)
+npm run db:deploy
 
 # 4. criar seu usuário admin + loja de exemplo
 #    (defina a senha antes, senão usa a padrão do seed)
@@ -91,7 +91,7 @@ nano .env
 #   APP_BASE_URL="https://seudominio.com"
 #   AUTH_SECRET="...(openssl rand -hex 32)..."
 
-npm run db:push
+npm run db:deploy
 SEED_ADMIN_EMAIL="voce@email.com" SEED_ADMIN_PASSWORD="senhaForte" npm run db:seed
 
 npm run build
@@ -188,6 +188,8 @@ rabbitfy_mapa.md                        mapa da plataforma Rabbitfy (pesquisa)
 ```
 
 ## Próximos passos (quando validar)
-Testes automatizados do fluxo de checkout/webhook, migrations versionadas
-(`prisma migrate` em vez de `db:push`), múltiplos gateways além da Nerva
-e criação de campanha no TikTok direto pelo painel.
+Testes automatizados do fluxo de checkout/webhook e múltiplos gateways além da Nerva.
+
+Já entregues: criação de campanha no TikTok direto pelo painel e migrations versionadas
+(`prisma/migrations/`, aplicadas com `npm run db:deploy` — veja a seção Migrations do
+`CLAUDE.md`).
