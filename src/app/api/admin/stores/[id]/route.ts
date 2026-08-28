@@ -37,6 +37,8 @@ export async function PATCH(
       ...(b.active !== undefined ? { active: !!b.active } : {}),
       ...(b.nervaApiKey !== undefined ? { nervaApiKey: b.nervaApiKey || null } : {}),
       ...(b.nervaWebhookSecret !== undefined ? { nervaWebhookSecret: b.nervaWebhookSecret || null } : {}),
+      ...(b.redirectUrl !== undefined ? { redirectUrl: b.redirectUrl || null } : {}),
+      ...(b.redirectSkipUpsell !== undefined ? { redirectSkipUpsell: !!b.redirectSkipUpsell } : {}),
       ...(b.metaPixelId !== undefined ? { metaPixelId: b.metaPixelId || null } : {}),
       ...(b.tiktokPixelId !== undefined ? { tiktokPixelId: b.tiktokPixelId || null } : {}),
       ...(b.googleAdsId !== undefined ? { googleAdsId: b.googleAdsId || null } : {}),

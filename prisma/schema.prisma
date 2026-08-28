@@ -45,6 +45,11 @@ model Store {
   nervaWebhookSecret String? // secret pra validar o HMAC do webhook
 
   // Pixels de anúncio (para tráfego pago desde o início)
+  // Para onde o cliente vai depois de pagar. Vazio mantém o
+  // comportamento atual: fica no checkout, com o upsell.
+  redirectUrl        String?
+  redirectSkipUpsell Boolean @default(false) // pula o upsell e vai direto
+
   metaPixelId   String? // ID do Pixel do Facebook/Meta
   tiktokPixelId String? // ID do Pixel do TikTok
   googleAdsId   String? // ex: AW-XXXXXXXXX (opcional)
@@ -98,6 +103,7 @@ model Product {
   compareAtCents Int? // preço "de" (riscado)
   imageUrl       String?
   active         Boolean  @default(true)
+  redirectUrl    String? // sobrescreve o destino da loja, só para este produto
   orders         Order[]
   upsells        Upsell[]
   collections    Collection[]

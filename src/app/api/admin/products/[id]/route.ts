@@ -33,6 +33,7 @@ export async function PATCH(
         ? { compareAtCents: b.compareAtCents ? Math.round(Number(b.compareAtCents)) : null }
         : {}),
       ...(b.imageUrl !== undefined ? { imageUrl: b.imageUrl || null } : {}),
+      ...(b.redirectUrl !== undefined ? { redirectUrl: b.redirectUrl || null } : {}),
       ...(b.active !== undefined ? { active: !!b.active } : {}),
     },
   });
