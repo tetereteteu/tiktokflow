@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 type Loja = { id: string; name: string; temToken: boolean };
+type Bc = { bcId: string; nome: string | null; moeda: string | null; fuso: string | null; pais: string | null };
 type Conta = {
   id: string; bcId: string; nome: string; status: string;
   tentativas: number; classe: string | null; erro: string | null;
@@ -64,8 +65,38 @@ export default function ContasClient({
   const [enviando, setEnviando] = useState(false);
   const [subindo, setSubindo] = useState(false);
   const [erroUpload, setErroUpload] = useState<string | null>(null);
+  const [bcs, setBcs] = useState<Bc[]>([]);
+  const [buscandoBcs, setBuscandoBcs] = useState(false);
+  const [erroBcs, setErroBcs] = useState<string | null>(null);
 
   const loja = lojas.find((l) => l.id === storeId);
+  const selecionados = new Set(f.bcIds.split(/[\s,;]+/).filter(Boolean));
+
+  // O bloco de exigências do Brasil só aparece quando é o caso: a maioria
+  // dos BCs em uso não é brasileira, e mostrar sempre vira ruído.
+  const envolveBrasil =
+    f.registeredArea.trim().toUpperCase() === "BR" ||
+    bcs.some((b) => selecionados.has(b.bcId) && (b.pais ?? "").toUpperCase() === "BR");
+
+  async function buscarBcs() {
+    setErroBcs(null);
+    setBuscandoBcs(true);
+    try {
+      const r = await fetch(`/api/admin/tiktok/bcs?storeId=${storeId}`);
+      const j = await r.json();
+      if (!r.ok) setErroBcs(j.error ?? "Falha ao listar");
+      else setBcs(j.bcs ?? []);
+    } finally {
+      setBuscandoBcs(false);
+    }
+  }
+
+  function alternarBc(id: string) {
+    const s = new Set(selecionados);
+    if (s.has(id)) s.delete(id);
+    else s.add(id);
+    setF({ ...f, bcIds: Array.from(s).join("\n") });
+  }
 
   const buscar = useCallback(async (id: string) => {
     const r = await fetch(`/api/admin/tiktok/contas?batchId=${id}`);
@@ -177,18 +208,25 @@ export default function ContasClient({
         e cria só o que falta, então rodar de novo completa em vez de duplicar.
       </p>
 
-      <div className="card" style={{ padding: 18, marginBottom: 18, maxWidth: 680 }}>
-        <strong style={{ color: "var(--gold-soft)", fontSize: 13 }}>
-          Conta registrada no Brasil exige estes campos
-        </strong>
-        <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8 }}>
-          A API do TikTok marca como opcionais no esquema, mas exige quando o BC ou a conta é
-          do Brasil: <strong>e-mail de contato</strong>, <strong>CNPJ</strong>,{" "}
-          <strong>imagens de qualificação</strong> e <strong>CNPJ de faturamento (tax_id)</strong>.
-          Faltando qualquer um, a criação é recusada — e recusa por campo faltando não passa
-          por insistência, só gasta tentativa.
-        </p>
-      </div>
+      {envolveBrasil && (
+        <div className="card" style={{ padding: 18, marginBottom: 18, maxWidth: 680 }}>
+          <strong style={{ color: "var(--gold-soft)", fontSize: 13 }}>
+            Registro no Brasil exige estes campos
+          </strong>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8 }}>
+            A regra vale quando <strong>a conta ou o BC</strong> é registrado no Brasil (o mesmo
+            para França e México). Nesse caso a API exige <strong>e-mail de contato</strong>,{" "}
+            <strong>CNPJ</strong>, <strong>imagens de qualificação</strong> e{" "}
+            <strong>CNPJ de faturamento</strong> — campos que o esquema dela marca como
+            opcionais. Faltando um, a criação é recusada, e recusa por campo faltando não passa
+            por insistência: só gasta tentativa.
+          </p>
+          <p className="dim" style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 8 }}>
+            Com BC de fora, o registro da conta segue o país do BC e estes campos deixam de ser
+            exigidos. Confira a região abaixo antes de rodar.
+          </p>
+        </div>
+      )}
 
       <div className="card" style={{ padding: 20, maxWidth: 680 }}>
         <Campo label="Loja">
@@ -200,6 +238,47 @@ export default function ContasClient({
             ))}
           </select>
         </Campo>
+
+        <div style={{ marginBottom: 10 }}>
+          <button className="btn btn--ghost" onClick={buscarBcs} disabled={buscandoBcs || !loja?.temToken}>
+            {buscandoBcs ? "Buscando..." : "Buscar meus Business Centers"}
+          </button>
+          {erroBcs && <p style={{ color: "var(--red)", fontSize: 12.5, marginTop: 6 }}>{erroBcs}</p>}
+        </div>
+
+        {bcs.length > 0 && (
+          <div className="card" style={{ padding: 0, marginBottom: 14, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ textAlign: "left", color: "var(--text-dim)" }}>
+                    <th style={th}></th><th style={th}>Business Center</th>
+                    <th style={th}>País</th><th style={th}>Moeda</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bcs.map((b) => (
+                    <tr key={b.bcId} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={td}>
+                        <input
+                          type="checkbox"
+                          checked={selecionados.has(b.bcId)}
+                          onChange={() => alternarBc(b.bcId)}
+                        />
+                      </td>
+                      <td style={td}>
+                        {b.nome ?? "sem nome"}
+                        <span className="dim" style={{ fontSize: 11.5, marginLeft: 6 }}>{b.bcId}</span>
+                      </td>
+                      <td style={td} className={b.pais ? "" : "dim"}>{b.pais ?? "—"}</td>
+                      <td style={td} className={b.moeda ? "" : "dim"}>{b.moeda ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <Campo label="Business Centers — um por linha">
           <textarea
@@ -227,7 +306,7 @@ export default function ContasClient({
           <Campo label="Região"><Inp v={f.registeredArea} on={(v) => setF({ ...f, registeredArea: v })} /></Campo>
         </Linha>
         <Linha>
-          <Campo label="Moeda"><Inp v={f.currency} on={(v) => setF({ ...f, currency: v })} /></Campo>
+          <Campo label="Moeda (só se o BC não informar a dele)"><Inp v={f.currency} on={(v) => setF({ ...f, currency: v })} /></Campo>
           <Campo label="Fuso"><Inp v={f.timezone} on={(v) => setF({ ...f, timezone: v })} /></Campo>
         </Linha>
         <Linha>

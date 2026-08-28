@@ -471,3 +471,63 @@ export async function uploadBcImage(
     };
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Resumo de Business Center.
+//
+// O formato exato da resposta de /bc/get/ não está fixado em lugar
+// citável: o SDK oficial tipa como resposta genérica e o portal de
+// docs é uma SPA. Em vez de apostar em UM caminho de campo e quebrar
+// em silêncio, aqui a leitura é tolerante: procura cada dado em
+// alguns nomes plausíveis e devolve null quando não acha.
+//
+// Isso importa porque a moeda da conta PRECISA bater com a do BC
+// (doc de advertiser_info.currency). Como a maioria dos BCs em uso
+// não é brasileira, herdar a moeda do BC evita recusa por moeda
+// incompatível — e quando o campo não vier, o lote cai no molde
+// informado na tela em vez de travar.
+// ─────────────────────────────────────────────────────────────
+
+export interface BcResumo {
+  bcId: string;
+  nome: string | null;
+  moeda: string | null;
+  fuso: string | null;
+  pais: string | null;
+}
+
+const texto = (o: Record<string, unknown>, ...chaves: string[]): string | null => {
+  for (const k of chaves) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+};
+
+export function normalizarBcs(data: unknown): BcResumo[] {
+  const d = data as Record<string, unknown> | null;
+  const lista = (d?.list ?? d?.bc_list ?? d?.data) as unknown;
+  if (!Array.isArray(lista)) return [];
+
+  const out: BcResumo[] = [];
+  for (const bruto of lista) {
+    if (!bruto || typeof bruto !== "object") continue;
+    const item = bruto as Record<string, unknown>;
+    // algumas respostas aninham o BC em bc_info, outras não
+    const info = (item.bc_info && typeof item.bc_info === "object"
+      ? (item.bc_info as Record<string, unknown>)
+      : item);
+
+    const bcId = texto(info, "bc_id", "id");
+    if (!bcId) continue;
+
+    out.push({
+      bcId,
+      nome: texto(info, "name", "bc_name", "company_name"),
+      moeda: texto(info, "currency", "bc_currency"),
+      fuso: texto(info, "timezone", "time_zone"),
+      pais: texto(info, "country", "registered_area", "company_country", "region"),
+    });
+  }
+  return out;
+}

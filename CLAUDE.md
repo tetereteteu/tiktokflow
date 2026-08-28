@@ -129,6 +129,15 @@ não invente campo aqui.
 
 - **Conta antes de criar.** `countBcAdvertisers` lê quantas o BC já tem e o lote
   cria só a diferença: re-rodar completa, não duplica.
+- **A moeda vem do BC, não do formulário.** A doc de `advertiser_info.currency`
+  exige que ela bata com a do Business Center, e a maioria dos BCs em uso não é
+  brasileira — mandar BRL num BC em USD é recusa na certa. `listBusinessCenters`
+  + `normalizarBcs` resolvem a moeda por BC; o campo da tela é só o fallback
+  para quando a listagem não trouxer o dado.
+- **`normalizarBcs` lê de forma tolerante de propósito.** O formato de `/bc/get/`
+  não está fixado em fonte citável (o SDK tipa genérico, o portal de docs é SPA),
+  então ela procura cada campo em alguns nomes plausíveis e devolve `null` no
+  resto. Não troque por acesso direto a um caminho só: quebraria em silêncio.
 - **O lote roda solto** (`void rodarLote(id)`), como o disparo da CAPI no
   webhook: com as esperas entre tentativas ele passa de qualquer timeout HTTP. O
   progresso vive no banco e a tela consulta; `status: "PARADO"` é lido a cada
@@ -142,7 +151,10 @@ não invente campo aqui.
   insistir devagar rende mais que insistir rápido.
 - **NEGOCIO esgotado para o BC inteiro**, não só a conta: o payload é o mesmo
   para as 28, então o que reprova uma reprova todas.
-- **Brasil exige campos que o esquema marca como opcionais**:
+- **A exigência do Brasil vale por REGISTRO, não por praça de veiculação**:
+  vale quando a conta **ou** o BC é registrado no Brasil (idem França e México).
+  BC estrangeiro rodando tráfego para o Brasil não cai nessa regra — por isso o
+  aviso na tela é condicional. Campos exigidos nesse caso:
   `contact_info.email`, `qualification_info.license_no` (CNPJ),
   `qualification_info.qualification_image_ids` e `billing_info.tax_map.tax_id`.
   Sem eles a API recusa — e é recusa de payload, que insistência não resolve.
