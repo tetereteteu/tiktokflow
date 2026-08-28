@@ -39,7 +39,7 @@ const GRUPOS: Grupo[] = [
     itens: [
       { href: "/painel/lojas", label: "Lojas" },
       { href: "/painel/produtos", label: "Produtos" },
-      { href: "/painel/colecoes", label: "Coleções", tag: "em breve" },
+      { href: "/painel/colecoes", label: "Coleções" },
       { href: "/painel/dominios", label: "Domínios", tag: "leitura" },
     ],
   },

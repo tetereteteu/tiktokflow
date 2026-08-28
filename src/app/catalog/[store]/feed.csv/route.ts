@@ -1,95 +1,83 @@
 // ─────────────────────────────────────────────────────────────
 // Feed de catálogo de produtos.
 // URL pública: /catalog/{slug-da-loja}/feed.csv
+//        e     /catalog/{slug-da-loja}/feed.csv?colecao={slug}
 //
-// Formato CSV compatível com TikTok Catalog Manager, Meta Catalog
-// e Google Merchant (colunas padrão da indústria). É isto que você
-// cola no "Data feed / URL" do catálogo do TikTok pra rodar
-// Video Shopping Ads / DSA com os seus produtos.
+// Formato CSV compatível com TikTok Catalog Manager, Meta Catalog e
+// Google Merchant. É isto que vai no "Data feed / URL" do catálogo.
+//
+// O filtro por coleção existe pra rodar campanha de uma linha de
+// produto só, em vez do catálogo inteiro. A coluna product_type
+// recebe o nome da coleção, que é como as plataformas agrupam o
+// catálogo — antes era "Geral" fixo pra tudo.
 // ─────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-// escapa um campo pra CSV (aspas se tiver vírgula/aspas/quebra de linha)
-function csv(v: string | null | undefined): string {
-  const s = (v ?? "").replace(/\r?\n/g, " ").trim();
-  if (/[",]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
-
-function reais(cents: number): string {
-  return `${(cents / 100).toFixed(2)} BRL`;
-}
+import { CABECALHO, linhaFeed } from "@/lib/feed-catalogo";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ store: string }> },
 ) {
   const { store: slug } = await params;
+  const colecaoSlug = req.nextUrl.searchParams.get("colecao")?.trim() || null;
 
   const store = await prisma.store.findFirst({
     where: { slug, active: true },
-    include: {
-      products: { where: { active: true }, orderBy: { createdAt: "desc" } },
-    },
+    select: { id: true, name: true, slug: true },
   });
-
   if (!store) {
     return NextResponse.json({ error: "Loja não encontrada" }, { status: 404 });
   }
 
-  const base =
-    process.env.APP_BASE_URL?.replace(/\/$/, "") || req.nextUrl.origin;
+  let colecao: { id: string; title: string } | null = null;
+  if (colecaoSlug) {
+    colecao = await prisma.collection.findFirst({
+      where: { storeId: store.id, slug: colecaoSlug, active: true },
+      select: { id: true, title: true },
+    });
+    if (!colecao) {
+      return NextResponse.json({ error: "Coleção não encontrada" }, { status: 404 });
+    }
+  }
 
-  const header = [
-    "id",
-    "title",
-    "description",
-    "availability",
-    "condition",
-    "price",
-    "sale_price",
-    "link",
-    "image_link",
-    "brand",
-    "product_type",
-  ].join(",");
-
-  const rows = store.products.map((p) => {
-    const link = `${base}/${store.slug}/checkout/${p.slug}`;
-    const price =
-      p.compareAtCents && p.compareAtCents > p.priceCents
-        ? p.compareAtCents
-        : p.priceCents;
-    const salePrice =
-      p.compareAtCents && p.compareAtCents > p.priceCents
-        ? p.priceCents
-        : null;
-
-    return [
-      csv(p.id),
-      csv(p.title),
-      csv(p.description || p.title),
-      "in stock",
-      "new",
-      reais(price),
-      salePrice != null ? reais(salePrice) : "",
-      csv(link),
-      csv(p.imageUrl || ""),
-      csv(store.name),
-      csv("Geral"),
-    ].join(",");
+  const produtos = await prisma.product.findMany({
+    where: {
+      storeId: store.id,
+      active: true,
+      ...(colecao ? { collections: { some: { id: colecao.id } } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      // product_type sai da coleção; sem filtro, usa a primeira ativa
+      collections: {
+        where: { active: true },
+        orderBy: { ordem: "asc" },
+        select: { title: true },
+        take: 1,
+      },
+    },
   });
 
-  const body = [header, ...rows].join("\n");
+  const base = process.env.APP_BASE_URL?.replace(/\/$/, "") || req.nextUrl.origin;
 
-  return new NextResponse(body, {
+  const linhas = produtos.map((p) =>
+    linhaFeed(p, {
+      baseUrl: base,
+      storeSlug: store.slug,
+      storeName: store.name,
+      productType: colecao?.title ?? p.collections[0]?.title ?? "Geral",
+    }),
+  );
+
+  const nome = colecao ? `${store.slug}-${colecaoSlug}` : store.slug;
+
+  return new NextResponse([CABECALHO, ...linhas].join("\n"), {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `inline; filename="catalog-${store.slug}.csv"`,
-      // deixa o TikTok/Meta re-baixarem sem cache velho
+      "Content-Disposition": `inline; filename="catalog-${nome}.csv"`,
       "Cache-Control": "public, max-age=300",
     },
   });

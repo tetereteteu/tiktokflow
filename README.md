@@ -10,6 +10,8 @@ Stack: **Next.js 14 + Postgres + Prisma**. Visual dark com o dourado da Nerva.
 - **Checkout** em `/{loja}/checkout/{produto}` — form, gera Pix na Nerva, mostra QR + copia-e-cola, e vira "pago" sozinho
 - **Order bump** no checkout (oferta extra que soma no valor com um clique)
 - **Upsell pós-compra**: depois do Pix aprovado, oferece um produto extra; se aceito, gera novo Pix reusando os dados do cliente (sem redigitar)
+- **Coleções**: agrupa produtos por tema — a vitrine sai em seções e cada coleção ganha
+  um feed próprio (`?colecao={slug}`), pra rodar campanha de uma linha só
 - **Feed de catálogo** por loja em `/catalog/{slug}/feed.csv` — CSV compatível com **TikTok Catalog Manager**, Meta e Google, pra rodar Video Shopping Ads / DSA
 - **Tela Catálogo & TikTok** no painel: URL do feed de cada loja, status dos pixels e o passo a passo pra criar a campanha de catálogo no TikTok
 - **Webhook** da Nerva com validação de assinatura HMAC (fonte da verdade do pagamento)
@@ -188,7 +190,8 @@ rabbitfy_mapa.md                        mapa da plataforma Rabbitfy (pesquisa)
 ```
 
 ## Próximos passos (quando validar)
-Múltiplos gateways além da Nerva.
+Múltiplos gateways além da Nerva, e o middleware que faz o domínio próprio servir
+a vitrine.
 
 Já entregues: criação de campanha no TikTok direto pelo painel, migrations versionadas
 (`prisma/migrations/`, aplicadas com `npm run db:deploy`) e testes automatizados do
