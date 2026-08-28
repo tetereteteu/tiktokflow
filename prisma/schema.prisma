@@ -76,6 +76,7 @@ model Store {
   checkoutTheme CheckoutTheme?
   campaigns     AdCampaign[]
   adSpend       AdSpend[]
+  contaLotes    AdAccountBatch[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -330,4 +331,74 @@ model AdSpend {
 
   @@unique([storeId, platform, date, externalCampaignId])
   @@index([storeId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Criação de contas de anúncio em lote, um alvo por Business
+// Center. O lote roda em segundo plano (pode levar horas com as
+// esperas entre tentativas), então o progresso vive no banco: a
+// tela consulta daqui, não segura a requisição aberta.
+// ─────────────────────────────────────────────────────────────
+model AdAccountBatch {
+  id      String @id @default(uuid())
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String
+
+  bcIds         String[] // um alvo por BC
+  alvoPorBc     Int      @default(28)
+  maxTentativas Int      @default(20) // teto por conta, pra erro que não é transitório
+
+  // Molde da conta: o payload de /bc/advertiser/create/ é igual pra
+  // todas as contas do lote, só o nome muda. Fica no lote (e não em
+  // Store) porque o lote seguinte pode usar outra empresa ou outro BC.
+  nomePrefixo    String
+  currency       String   @default("BRL")
+  timezone       String   @default("America/Sao_Paulo")
+  company        String
+  industry       Int
+  registeredArea String   @default("BR")
+
+  // Exigidos no Brasil pela API — sem eles a criação é negada, e
+  // negação por campo faltando não passa por insistência.
+  contactEmail          String?
+  contactName           String?
+  contactNumber         String?
+  licenseNo             String? // CNPJ
+  qualificationImageIds String[] // via /bc/image/upload/
+  promotionLink         String?
+  taxId                 String?
+  billingAddress        String?
+
+  status     String  @default("RODANDO") // RODANDO | CONCLUIDO | PARADO
+  observacao String? @db.Text
+
+  contas    AdAccount[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([storeId])
+}
+
+// Uma linha por conta que o lote tentou criar. Guarda a contagem de
+// tentativas e o último erro pra que insistência não vire caixa preta:
+// dá pra ver quantas passaram, quantas travaram e por quê.
+model AdAccount {
+  id      String         @id @default(uuid())
+  batch   AdAccountBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batchId String
+
+  bcId                 String
+  nome                 String
+  externalAdvertiserId String? // id devolvido pelo TikTok
+
+  status       String  @default("PENDENTE") // PENDENTE | CRIADA | ERRO
+  tentativas   Int     @default(0)
+  ultimaClasse String? // REDE | LIMITE | SERVIDOR | NEGOCIO | COTA
+  ultimoErro   String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([bcId])
 }
