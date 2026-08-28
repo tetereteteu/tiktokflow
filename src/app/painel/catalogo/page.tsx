@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import PainelNav from "../PainelNav";
+import PainelShell from "../PainelShell";
 import CatalogoClient from "./CatalogoClient";
 
 export default async function CatalogoPage() {
@@ -27,9 +27,8 @@ export default async function CatalogoPage() {
   }));
 
   return (
-    <main className="wrap" style={{ paddingBottom: 60 }}>
-      <PainelNav email={session.email} />
+    <PainelShell email={session.email}>
       <CatalogoClient stores={safe} />
-    </main>
+    </PainelShell>
   );
 }

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import PainelNav from "./PainelNav";
+import PainelShell from "./PainelShell";
 
 function brl(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", {
@@ -69,8 +69,7 @@ export default async function PainelPage({
   const totalVendas = paidAgg._count;
 
   return (
-    <main className="wrap" style={{ paddingBottom: 60 }}>
-      <PainelNav email={session.email} />
+    <PainelShell email={session.email}>
 
       {/* KPIs */}
       <section
@@ -156,7 +155,7 @@ export default async function PainelPage({
           </div>
         )}
       </div>
-    </main>
+    </PainelShell>
   );
 }
 

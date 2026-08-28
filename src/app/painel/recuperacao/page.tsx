@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import PainelNav from "../PainelNav";
+import PainelShell from "../PainelShell";
 import CopyPix from "./CopyPix";
 
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -28,8 +28,7 @@ export default async function RecuperacaoPage() {
   });
 
   return (
-    <main className="wrap" style={{ paddingBottom: 60 }}>
-      <PainelNav email={session.email} />
+    <PainelShell email={session.email}>
       <div>
         <div className="eyebrow">Conversão</div>
         <h1 className="display" style={{ fontSize: 34 }}>Recuperação</h1>
@@ -82,7 +81,7 @@ export default async function RecuperacaoPage() {
           </div>
         )}
       </div>
-    </main>
+    </PainelShell>
   );
 }
 
